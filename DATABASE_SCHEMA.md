@@ -91,3 +91,18 @@
 | `service_charges` | Configurable per-listing/per-lead/fixed service charges |
 | `commission_rules` | Consent- and contract-gated placement/facilitation commission rules |
 | `commission_records` | Recorded facilitation/placement commissions with explicit `contract_accepted` gate |
+
+---
+
+## Phase 6 — Enquiries, Messaging & Automation Tables (`202611250008_phase6_enquiries_and_automation.sql`, 8 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `enquiries` | Common enquiry engine across modules (`NEW` → `VIEWED` → `CONTACTED` → `ACCEPTED`/`REJECTED`/`COMPLETED`/`CANCELLED`/`CLOSED`) + feedback |
+| `conversations` | 2-party conversation threads linked to enquiries |
+| `messages` | Conversation messages restricted strictly to thread participants |
+| `notifications` | User notifications with `dedup_key` uniqueness |
+| `notification_templates` | Configurable Email, Official WhatsApp Cloud, Push & In-App templates |
+| `notification_logs` | Delivery audit log (`SENT`, `FAILED`, `SKIPPED_NO_CONSENT`, `SKIPPED_RATE_LIMIT`) & INR cost estimates |
+| `automation_jobs` | Scheduled job queue with retry attempts, backoff & failure error logging |
+| `webhook_events` | Idempotent inbound webhook log (`RAZORPAY`, `WHATSAPP`, `EMAIL`) |

@@ -1,8 +1,8 @@
 # PROJECT STATUS — SHALOM CONNECTHUB INDIA
 
 **Last Updated**: 2026-11-25  
-**Current Phase**: Phase 5 — Subscription, GST Invoice & Razorpay Engine  
-**Overall Status**: `TESTING` (Phases 1–5 implemented and 31/31 Vitest tests passing; live Supabase & Razorpay sandbox keys pending)
+**Current Phase**: Phase 6 — Common Enquiry & Notification Automation  
+**Overall Status**: `TESTING` (Phases 1–6 implemented and 35/35 Vitest tests passing; live Supabase & provider secrets pending)
 
 ---
 
@@ -26,24 +26,24 @@
 | **2** | Module A: Staff Connect | `TESTING` | 9-table SQL + RLS (`202611250004`); awaiting live Supabase push |
 | **3** | Module B: Property Connect | `TESTING` | 7-table SQL + RLS (`202611250005`); awaiting live Supabase push |
 | **4** | Module C: School Connect | `TESTING` | 6-table SQL + RLS (`202611250006`); awaiting live Supabase push |
-| **5** | Subscription, Charges & Razorpay Engine | `TESTING` | 11-table SQL + RLS (`202611250007`), 3 Razorpay Edge Functions, GST invoices, refunds, expiry sweep, 31/31 tests pass |
-| **6** | Common Enquiry & Notification Automation | `NOT STARTED` | Next phase: unified enquiries, messages, cron jobs, WhatsApp Cloud API, Email & Push |
-| **7** | Independent AI Automation Module | `NOT STARTED` | Depends on Phases 1–6 |
+| **5** | Subscription, Charges & Razorpay Engine | `TESTING` | 11-table SQL + RLS (`202611250007`), 3 Razorpay Edge Functions, GST invoices, refunds |
+| **6** | Common Enquiry & Notification Automation | `TESTING` | 8-table SQL + RLS (`202611250008`), `automation-worker` Edge Function, Enquiries/Messages/Admin Logs, 35/35 tests pass |
+| **7** | Independent AI Automation Module | `NOT STARTED` | Next phase: AI listing assistant, EN/HI/ML translation, matching, moderation, customer assistant, spend caps |
 | **8** | PWA & Mobile Optimisation | `NOT STARTED` | Depends on Phases 1–7 |
 | **9** | Security, RLS & Performance Testing | `NOT STARTED` | Depends on Phases 1–8 |
 | **10** | Production Deployment & Final Docs | `NOT STARTED` | Depends on Phase 9 |
 
 ---
 
-## Session Report — 2026-11-25 (Session 6: Phase 5 — Subscription, GST & Razorpay Engine)
+## Session Report — 2026-11-25 (Session 7: Phase 6 — Enquiries & Notification Automation)
 
 - **Completed Work**:
-  - Created `supabase/migrations/202611250007_phase5_financial_engine.sql` (11 RLS-enabled financial tables) and 3 Deno Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`).
-  - Implemented `src/types/finance.ts`, `src/services/gstInvoice.ts`, and `src/services/financeStore.ts`.
-  - Built `PaymentsAndBillingPage` (`/dashboard/payments`), updated `PricingPage` (`/pricing`), and built `AdminFinancePage` (`/admin/plans`, `/admin/subscriptions`, `/admin/payments`, `/admin/refunds`, `/admin/commissions`, `/admin/reports`).
+  - Created `supabase/migrations/202611250008_phase6_enquiries_and_automation.sql` (8 RLS-enabled tables) and `supabase/functions/automation-worker/index.ts`.
+  - Built `src/types/communication.ts` and `src/services/communicationStore.ts`.
+  - Built `EnquiriesInboxPage` (`/dashboard/enquiries`), `MessagesPage` (`/dashboard/messages`), and `AdminNotificationsPage` (`/admin/enquiries`, `/admin/notifications`).
 - **Tests Executed**:
   - `npm.cmd run typecheck` — Pass (0 errors)
-  - `npm.cmd run build` — Pass (`dist/` built in 8.81s)
-  - `npm.cmd test` — Pass (8 test files, 31 tests passed)
+  - `npm.cmd run build` — Pass (`dist/` built in 8.71s)
+  - `npm.cmd test` — Pass (9 test files, 35 tests passed)
 - **Next Recommended Task**:
-  - Proceed to **Phase 6: Common Enquiry Engine & Notification Automation** (unified enquiries, conversations/messages, automation queue, WhatsApp Business Cloud API, Email, and Push notifications).
+  - Proceed to **Phase 7: Independent AI Automation Module** (listing assistant, EN/HI/ML translation keeping original text, candidate & property matching, moderation flagging, customer assistant, and usage/spend caps).

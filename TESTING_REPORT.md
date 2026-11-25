@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 5 — Subscription, GST Invoice & Razorpay Engine (plus Phases 1–4 Regression)
+**Phase Tested**: Phase 6 — Common Enquiry, Messaging & Notification Automation (plus Phases 1–5 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.81s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (31/31)** | 8 test files passed in 12.40s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.71s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (35/35)** | 9 test files passed in 14.53s |
 
 ---
 
-## 2. Test File Breakdown (31 Tests Passed)
+## 2. Test File Breakdown (35 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -54,6 +54,11 @@
    - Handles failed payments and deduplicates duplicate Razorpay webhooks safely without creating duplicate subscriptions or invoices.
    - Runs expiry reminders (`7D`..`0D`), reverts expired entitlements back to Free (`1` listing), and processes refunds via Finance Admin authorization.
    - Verifies all 11 Phase 5 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
+9. `src/test/communicationAndAutomation.test.ts` **(4/4 passed)**:
+   - Validates listing availability on enquiry submission, isolates conversation participants, and transitions enquiry status on owner reply.
+   - Enforces user notification consent (`SKIPPED_NO_CONSENT`), notification deduplication, and daily channel rate caps (`SKIPPED_RATE_LIMIT`).
+   - Runs unanswered enquiry reminder sweep and retries failing automation jobs up to 3 attempts with failure logging.
+   - Verifies all 8 Phase 6 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 

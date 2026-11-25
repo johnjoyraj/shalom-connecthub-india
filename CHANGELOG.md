@@ -1,5 +1,12 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.6.0] - 2026-11-25 (Phase 6 — Enquiries, Messaging & Notification Automation)
+### Added
+- **Database & Edge Worker**: Added `supabase/migrations/202611250008_phase6_enquiries_and_automation.sql` (8 RLS-enabled tables) and `supabase/functions/automation-worker/index.ts` (Meta Graph API v21.0 Official WhatsApp Cloud API + retry queue).
+- **Communication & Automation Services**: Implemented `communication.ts` and `communicationStore.ts` (common enquiry engine, 2-way messaging, consent-checked notification dispatcher, deduplication, rate caps, and unanswered-enquiry reminder sweep).
+- **User & Admin UI**: Implemented `/dashboard/enquiries` (`EnquiriesInboxPage`), `/dashboard/messages` (`MessagesPage`), `/admin/enquiries`, and `/admin/notifications` (`AdminNotificationsPage`).
+- **Automated Tests**: Added `src/test/communicationAndAutomation.test.ts` (35/35 total tests passing).
+
 ## [0.5.0] - 2026-11-25 (Phase 5 — Subscription, GST & Razorpay Engine)
 ### Added
 - **Database & Edge Functions**: Added `supabase/migrations/202611250007_phase5_financial_engine.sql` (11 RLS-enabled financial tables) and 3 Razorpay Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`) with HMAC-SHA256 verification and idempotency.
