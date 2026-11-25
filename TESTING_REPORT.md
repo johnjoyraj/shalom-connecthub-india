@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 8 — PWA & Mobile Optimisation (plus Phases 1–7 Regression)
+**Phase Tested**: Phase 9 — Security, RLS, Performance & Playwright E2E Verification (Phases 1–9 Full Suite)
 
 ---
 
@@ -10,12 +10,13 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 10.81s (route-split chunks generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (42/42)** | 11 test files passed in 17.64s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.52s; largest chunk `290.60 kB` (0 chunk warnings) |
+| Unit, RLS & Security Tests | `npm.cmd test` (`vitest run`) | **PASS (45/45)** | 12 test files passed in 19.71s |
+| Browser E2E & Mobile | `npm.cmd run test:e2e` (`playwright test`) | **PASS (3/3)** | Headless Chrome against `vite preview` in 16.1s |
 
 ---
 
-## 2. Test File Breakdown (42 Tests Passed)
+## 2. Test File Breakdown (45 Vitest + 3 Playwright E2E Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -68,6 +69,13 @@
     - Verifies `manifest.webmanifest`, icons, `offline.html`, and `sw.js`.
     - Verifies `isSafeToCacheUrl` rejects private dashboards, auth endpoints, private documents, Razorpay payment endpoints, and `POST` requests.
     - Verifies client-side image scaling preserves aspect ratio.
+12. `src/test/securityAudit.test.ts` **(3/3 passed)**:
+    - Verifies every PostgreSQL table across all 9 SQL migrations (`>= 55` tables) enforces `ENABLE ROW LEVEL SECURITY`.
+    - Confirms zero server-side secret identifiers or `dangerouslySetInnerHTML` in `src/` or `dist/` production bundles.
+13. `e2e/marketplace.spec.ts` **(3/3 Playwright passed)**:
+    - Public routes (`/`, `/jobs`, `/properties`, `/schools`, `/pricing`) and PWA assets (`/manifest.webmanifest`, `/offline.html`, `/sw.js`) render and return HTTP 200.
+    - Mobile responsiveness at `375x812` across 6 routes passes with zero horizontal overflow.
+    - Role guard redirects unauthenticated `/admin` to `/login`, blocks `Employer` from `/admin`, and grants `Super Admin` access to `/admin`.
 
 ---
 

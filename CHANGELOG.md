@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.9.0] - 2026-11-25 (Phase 9 — Security, Performance & Playwright E2E)
+### Added & Verified
+- **Bundle Performance**: Configured `vite.config.ts` `manualChunks` (`react-vendor`, `supabase-vendor`, `icons-vendor`) eliminating all >500 kB chunk warnings (largest chunk `290.60 kB`).
+- **Security & Schema Audit**: Added `src/test/securityAudit.test.ts` verifying RLS coverage across all 9 SQL migrations and zero server secrets in `src/` or `dist/`.
+- **Browser E2E & Mobile Tests**: Installed `@playwright/test`, added `playwright.config.ts` and `e2e/marketplace.spec.ts` (3/3 headless Chrome tests passing, including `375x812` zero-overflow verification and RBAC route checks).
+
 ## [0.8.0] - 2026-11-25 (Phase 8 — PWA & Mobile Optimisation)
 ### Added
 - **PWA Assets**: Added `public/manifest.webmanifest`, `public/icons/icon-192.svg`, `public/icons/icon-512.svg`, `public/offline.html`, and `public/sw.js` with strict cache exclusions for private dashboards, auth, private documents, and Razorpay endpoints.
