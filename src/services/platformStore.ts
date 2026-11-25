@@ -320,10 +320,22 @@ export const platformStore = {
         supabase.from('user_roles').select('role').eq('user_id', authData.user.id).eq('is_active', true),
       ]);
 
+      const existingRoles = (roleRows ?? []).map((r: { role: string }) => r.role as UserRole);
+      const metaRoles = Array.isArray(authData.user.user_metadata?.requested_roles)
+        ? (authData.user.user_metadata.requested_roles as UserRole[]).filter((r) => isSelfAssignableRole(r))
+        : [];
+      const missingRoles = metaRoles.filter((r) => !existingRoles.includes(r));
+      if (missingRoles.length > 0) {
+        await supabase.from('user_roles').upsert(
+          missingRoles.map((role) => ({ user_id: authData.user!.id, role, is_active: true })),
+          { onConflict: 'user_id,role' }
+        );
+      }
+
       if (!profile) return null;
       return {
         profile: profile as Profile,
-        roles: (roleRows ?? []).map((r: { role: string }) => r.role as UserRole),
+        roles: Array.from(new Set<UserRole>([...existingRoles, ...missingRoles])),
       };
     }
 
@@ -400,7 +412,13 @@ export const platformStore = {
         email,
         password: payload.password,
         options: {
-          data: { full_name: fullName, phone: payload.phone?.trim() ?? null },
+          data: {
+            full_name: fullName,
+            phone: payload.phone?.trim() ?? null,
+            requested_roles: requestedSafeRoles,
+            whatsapp_consent: Boolean(payload.whatsappConsent),
+            email_consent: Boolean(payload.emailConsent),
+          },
         },
       });
       if (error) throw new Error(error.message);

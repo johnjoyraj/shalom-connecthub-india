@@ -9,7 +9,7 @@ interface AuthContextValue {
   refreshUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<UserWithRoles>;
   quickDemoLogin: (userId: string) => Promise<UserWithRoles>;
-  register: (payload: RegisterPayload) => Promise<UserWithRoles>;
+  register: (payload: RegisterPayload) => Promise<{ user: UserWithRoles; requiresEmailConfirmation: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -46,8 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = useCallback(async (payload: RegisterPayload) => {
     const created = await platformStore.registerUser(payload);
-    setUser(created);
-    return created;
+    const activeSessionUser = await platformStore.getCurrentSessionUser();
+    if (activeSessionUser) {
+      setUser(activeSessionUser);
+      return { user: activeSessionUser, requiresEmailConfirmation: false };
+    }
+    setUser(null);
+    return { user: created, requiresEmailConfirmation: platformStore.isLiveSupabase() };
   }, []);
 
   const logout = useCallback(async () => {

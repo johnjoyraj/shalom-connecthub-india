@@ -171,6 +171,7 @@ export function AppRoutes() {
           <Route path="/dashboard/saved" element={<ProtectedRoute><UserDashboardPage section="saved" /></ProtectedRoute>} />
           <Route path="/dashboard/applications" element={<ProtectedRoute><CandidateDashboardPage /></ProtectedRoute>} />
           <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsAndBillingPage /></ProtectedRoute>} />
+          <Route path="/dashboard/billing" element={<Navigate to="/dashboard/payments" replace />} />
           <Route path="/dashboard/ai" element={<ProtectedRoute><AiWorkspacePage /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboardPage section="settings" /></ProtectedRoute>} />
 

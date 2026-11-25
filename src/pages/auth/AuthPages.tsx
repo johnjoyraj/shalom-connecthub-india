@@ -171,6 +171,7 @@ export function RegisterPage() {
   const [whatsappConsent, setWhatsappConsent] = useState(false);
   const [emailConsent, setEmailConsent] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const toggleRole = (role: UserRole) => {
@@ -183,9 +184,10 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     try {
-      await register({
+      const res = await register({
         fullName,
         email,
         phone,
@@ -196,7 +198,13 @@ export function RegisterPage() {
         whatsappConsent,
         emailConsent,
       });
-      navigate('/complete-profile', { replace: true });
+      if (res.requiresEmailConfirmation) {
+        setNotice(
+          `Account created! Please check ${email.trim().toLowerCase()} and click the verification link before signing in.`
+        );
+      } else {
+        navigate('/complete-profile', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed.');
     } finally {
@@ -217,6 +225,7 @@ export function RegisterPage() {
         </p>
 
         {error ? <div className="mt-4"><ErrorBanner message={error} /></div> : null}
+        {notice ? <div className="mt-4"><SuccessBanner message={notice} /></div> : null}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
