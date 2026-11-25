@@ -10,6 +10,7 @@ import type {
   NotificationTemplate,
   UserNotificationPreferences,
 } from '../types/communication';
+import { getSupabaseClient } from '../lib/supabase';
 import type { Listing, UserWithRoles } from '../types/domain';
 import { hasAdminScope, hasAnyAdminRole } from './permissions';
 import { platformStore } from './platformStore';
@@ -298,6 +299,25 @@ function dispatchInternal(
 
 export const communicationStore = {
   async getPreferences(userId: string): Promise<UserNotificationPreferences> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from('consent_records')
+        .select('consent_type, is_granted, created_at')
+        .eq('user_id', userId)
+        .in('consent_type', ['EMAIL', 'WHATSAPP', 'PUSH'])
+        .order('created_at', { ascending: false });
+      const latest = new Map<string, boolean>();
+      for (const r of data ?? []) {
+        if (!latest.has(r.consent_type)) latest.set(r.consent_type, Boolean(r.is_granted));
+      }
+      return {
+        email: latest.get('EMAIL') ?? true,
+        whatsapp: latest.get('WHATSAPP') ?? false,
+        push: latest.get('PUSH') ?? false,
+      };
+    }
+
     const state = readCommSandbox();
     return state.prefsByUser[userId] ?? { email: true, whatsapp: false, push: false };
   },
@@ -326,6 +346,67 @@ export const communicationStore = {
     // Step 2 of enquiry automation: validate listing availability
     if (!listing || listing.status !== 'APPROVED') {
       throw new Error('This listing is currently unavailable for enquiries.');
+    }
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const subject = input.subject.trim() || `Enquiry on ${listing.title}`;
+      const messageText = input.message.trim();
+      const { data: enqRow, error: eErr } = await supabase
+        .from('enquiries')
+        .insert({
+          customer_id: customer.profile.id,
+          listing_id: listing.id,
+          owner_id: listing.owner_id,
+          module_key: listing.module_key,
+          subject,
+          message: messageText,
+          status: 'NEW',
+        })
+        .select('*')
+        .single();
+      if (eErr) throw new Error(eErr.message);
+
+      const { data: convRow, error: cErr } = await supabase
+        .from('conversations')
+        .insert({
+          enquiry_id: enqRow.id,
+          customer_id: customer.profile.id,
+          owner_id: listing.owner_id,
+          listing_id: listing.id,
+          status: 'OPEN',
+        })
+        .select('*')
+        .single();
+      if (cErr) throw new Error(cErr.message);
+
+      await supabase.from('messages').insert({
+        conversation_id: convRow.id,
+        sender_id: customer.profile.id,
+        body: messageText,
+      });
+
+      // Best-effort counterparty in-app notification
+      await supabase.from('notifications').insert({
+        user_id: listing.owner_id,
+        channel: 'IN_APP',
+        event_type: 'NEW_ENQUIRY',
+        title: `New Enquiry: ${listing.title}`,
+        body: `${customer.profile.full_name}: ${messageText}`,
+        dedup_key: `enq-owner-inapp-${enqRow.id}`,
+      });
+
+      return {
+        enquiry: {
+          ...(enqRow as CommonEnquiry),
+          customer_name: customer.profile.full_name,
+          listing_title: listing.title,
+        },
+        conversation: {
+          ...(convRow as Conversation),
+          listing_title: listing.title,
+        },
+      };
     }
 
     const state = readCommSandbox();
@@ -404,6 +485,24 @@ export const communicationStore = {
   },
 
   async getMyEnquiries(user: UserWithRoles): Promise<CommonEnquiry[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let q = supabase
+        .from('enquiries')
+        .select('*, listings(title)')
+        .order('created_at', { ascending: false });
+      if (!hasAnyAdminRole(user.roles)) {
+        q = q.or(`customer_id.eq.${user.profile.id},owner_id.eq.${user.profile.id}`);
+      }
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((e: Record<string, unknown>) => ({
+        ...(e as unknown as CommonEnquiry),
+        customer_name: 'Member',
+        listing_title: ((e.listings as { title?: string } | null)?.title) ?? 'Listing',
+      }));
+    }
+
     const state = readCommSandbox();
     if (hasAnyAdminRole(user.roles)) {
       return [...state.enquiries];
@@ -418,6 +517,17 @@ export const communicationStore = {
     enquiryId: string,
     status: CommonEnquiryStatus
   ): Promise<CommonEnquiry> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: existing } = await supabase.from('enquiries').select('*').eq('id', enquiryId).single();
+      if (!existing) throw new Error('Enquiry not found.');
+      const patch: Record<string, unknown> = { status };
+      if (existing.owner_id === user.profile.id) patch.last_owner_response_at = nowIso();
+      const { data, error } = await supabase.from('enquiries').update(patch).eq('id', enquiryId).select('*').single();
+      if (error) throw new Error(error.message);
+      return { ...(data as CommonEnquiry), customer_name: 'Member', listing_title: 'Listing' };
+    }
+
     const state = readCommSandbox();
     const enq = state.enquiries.find((e) => e.id === enquiryId);
     if (!enq) throw new Error('Enquiry not found.');
@@ -444,6 +554,19 @@ export const communicationStore = {
     comment: string
   ): Promise<CommonEnquiry> {
     if (rating < 1 || rating > 5) throw new Error('Rating must be between 1 and 5.');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('enquiries')
+        .update({ feedback_rating: rating, feedback_comment: comment.trim() || null })
+        .eq('id', enquiryId)
+        .eq('customer_id', customer.profile.id)
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return { ...(data as CommonEnquiry), customer_name: customer.profile.full_name, listing_title: 'Listing' };
+    }
+
     const state = readCommSandbox();
     const enq = state.enquiries.find((e) => e.id === enquiryId);
     if (!enq || enq.customer_id !== customer.profile.id) {
@@ -460,6 +583,35 @@ export const communicationStore = {
     conversations: Conversation[];
     messages: ChatMessage[];
   }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let cq = supabase
+        .from('conversations')
+        .select('*, listings(title)')
+        .order('created_at', { ascending: false });
+      if (!hasAnyAdminRole(user.roles)) {
+        cq = cq.or(`customer_id.eq.${user.profile.id},owner_id.eq.${user.profile.id}`);
+      }
+      const { data: convRows, error: cErr } = await cq;
+      if (cErr) throw new Error(cErr.message);
+      const convs = (convRows ?? []).map((c: Record<string, unknown>) => ({
+        ...(c as unknown as Conversation),
+        listing_title: ((c.listings as { title?: string } | null)?.title) ?? 'Listing',
+      }));
+      const convIds = convs.map((c) => c.id);
+      if (convIds.length === 0) return { conversations: [], messages: [] };
+      const { data: msgRows } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: true });
+      const messages = (msgRows ?? []).map((m: Record<string, unknown>) => ({
+        ...(m as unknown as ChatMessage),
+        sender_name: m.sender_id === user.profile.id ? user.profile.full_name : 'Participant',
+      }));
+      return { conversations: convs, messages };
+    }
+
     const state = readCommSandbox();
     const convs = state.conversations.filter(
       (c) => c.customer_id === user.profile.id || c.owner_id === user.profile.id || hasAnyAdminRole(user.roles)
@@ -477,6 +629,42 @@ export const communicationStore = {
     body: string
   ): Promise<ChatMessage> {
     if (!body.trim()) throw new Error('Message text cannot be empty.');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', conversationId)
+        .single();
+      if (!conv) throw new Error('Conversation not found.');
+      const { data: msgRow, error: mErr } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: sender.profile.id,
+          body: body.trim(),
+        })
+        .select('*')
+        .single();
+      if (mErr) throw new Error(mErr.message);
+      if (sender.profile.id === conv.owner_id) {
+        await supabase
+          .from('enquiries')
+          .update({ status: 'CONTACTED', last_owner_response_at: nowIso() })
+          .eq('id', conv.enquiry_id);
+      }
+      const recipientId = sender.profile.id === conv.owner_id ? conv.customer_id : conv.owner_id;
+      await supabase.from('notifications').insert({
+        user_id: recipientId,
+        channel: 'IN_APP',
+        event_type: 'NEW_MESSAGE',
+        title: `New Message from ${sender.profile.full_name}`,
+        body: body.trim().slice(0, 120),
+        dedup_key: `msg-${(msgRow as { id: string }).id}`,
+      });
+      return { ...(msgRow as ChatMessage), sender_name: sender.profile.full_name };
+    }
+
     const state = readCommSandbox();
     const conv = state.conversations.find((c) => c.id === conversationId);
     if (!conv) throw new Error('Conversation not found.');
@@ -519,6 +707,15 @@ export const communicationStore = {
   },
 
   async getMyNotifications(userId: string): Promise<NotificationItem[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      return (data ?? []) as NotificationItem[];
+    }
     return readCommSandbox().notifications.filter((n) => n.user_id === userId);
   },
 
@@ -551,6 +748,23 @@ export const communicationStore = {
     dedupKey: string,
     payload: Record<string, unknown>
   ): Promise<{ job: AutomationJob; deduplicated: boolean }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: existing } = await supabase
+        .from('automation_jobs')
+        .select('*')
+        .eq('dedup_key', dedupKey)
+        .maybeSingle();
+      if (existing) return { job: existing as AutomationJob, deduplicated: true };
+      const { data: created, error } = await supabase
+        .from('automation_jobs')
+        .insert({ job_type: jobType, dedup_key: dedupKey, payload, status: 'PENDING' })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return { job: created as AutomationJob, deduplicated: false };
+    }
+
     const state = readCommSandbox();
     const existing = state.jobs.find((j) => j.dedup_key === dedupKey);
     if (existing) {
@@ -578,6 +792,37 @@ export const communicationStore = {
     jobsRetrying: number;
     jobsFailed: number;
   }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let queued = 0;
+      const cutoff = new Date(referenceNow.getTime() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: staleEnqs } = await supabase
+        .from('enquiries')
+        .select('id, owner_id, listings(title)')
+        .eq('status', 'NEW')
+        .is('last_owner_response_at', null)
+        .lte('created_at', cutoff);
+      for (const enq of staleEnqs ?? []) {
+        const res = await this.enqueueAutomationJob(
+          'UNANSWERED_ENQUIRY_REMINDER',
+          `unanswered-enq-${enq.id}`,
+          {
+            enquiryId: enq.id,
+            ownerId: enq.owner_id,
+            listingTitle: ((enq.listings as { title?: string } | null)?.title) ?? 'Listing',
+          }
+        );
+        if (!res.deduplicated) queued += 1;
+      }
+      const { data: fnRes } = await supabase.functions.invoke('automation-worker', { body: {} });
+      return {
+        unansweredEnquiriesQueued: queued,
+        jobsCompleted: Number((fnRes as { processed?: number } | null)?.processed ?? 0),
+        jobsRetrying: 0,
+        jobsFailed: 0,
+      };
+    }
+
     const state = readCommSandbox();
     let unansweredEnquiriesQueued = 0;
 
@@ -652,6 +897,22 @@ export const communicationStore = {
     if (!hasAdminScope(actor.roles, 'system') && !hasAdminScope(actor.roles, 'moderation')) {
       throw new Error('Unauthorized: Admin access required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const [tplRes, logRes, jobRes, enquiries] = await Promise.all([
+        supabase.from('notification_templates').select('*').order('event_type', { ascending: true }),
+        supabase.from('notification_logs').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('automation_jobs').select('*').order('created_at', { ascending: false }).limit(100),
+        this.getMyEnquiries(actor),
+      ]);
+      return {
+        templates: (tplRes.data ?? []) as NotificationTemplate[],
+        logs: (logRes.data ?? []) as NotificationLog[],
+        jobs: (jobRes.data ?? []) as AutomationJob[],
+        enquiries,
+      };
+    }
+
     const state = readCommSandbox();
     return {
       templates: state.templates,

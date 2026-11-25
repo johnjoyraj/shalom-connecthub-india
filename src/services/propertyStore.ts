@@ -309,6 +309,56 @@ function assertOwnerOrAssignedAgent(user: UserWithRoles, prop: PropertyListing):
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function toDbUuid(val: string | null | undefined): string | null {
+  return val && UUID_RE.test(val) ? val : null;
+}
+
+function mapDbPropertyRow(row: Record<string, unknown>): PropertyListing {
+  const l = row.listings as Record<string, unknown> | undefined;
+  const d = row.property_details as Record<string, unknown> | undefined;
+  const p = row.property_pricing as Record<string, unknown> | undefined;
+  const loc = row.property_locations as Record<string, unknown> | undefined;
+  const feats = Array.isArray(row.property_features)
+    ? (row.property_features as Array<{ amenity_label?: string }>)
+        .map((f) => f.amenity_label)
+        .filter((x): x is string => Boolean(x))
+    : [];
+  return {
+    ...(row as unknown as PropertyListing),
+    title: String(l?.title ?? ''),
+    slug: String(l?.slug ?? ''),
+    description: String(l?.description ?? ''),
+    is_featured: Boolean(l?.is_featured),
+    listing_status: (l?.status as PropertyListing['listing_status']) ?? 'APPROVED',
+    owner_name: 'Verified Lister',
+    area_value: Number(d?.area_value ?? 0),
+    area_unit: (d?.area_unit as AreaUnit) ?? 'SQ_FT',
+    bedrooms: (d?.bedrooms as number | null) ?? null,
+    bathrooms: (d?.bathrooms as number | null) ?? null,
+    furnishing: (d?.furnishing as FurnishingType | null) ?? null,
+    pg_sharing_type: (d?.pg_sharing_type as string | null) ?? null,
+    meals_included: (d?.meals_included as boolean | null) ?? null,
+    gender_preference: (d?.gender_preference as PropertyListing['gender_preference']) ?? null,
+    sale_price: p?.sale_price != null ? Number(p.sale_price) : null,
+    monthly_rent: p?.monthly_rent != null ? Number(p.monthly_rent) : null,
+    security_deposit: p?.security_deposit != null ? Number(p.security_deposit) : null,
+    lease_duration_months: p?.lease_duration_months != null ? Number(p.lease_duration_months) : null,
+    is_negotiable: Boolean(p?.is_negotiable ?? true),
+    location_id: (loc?.location_id as string | null) ?? null,
+    state_name: String(loc?.state_name ?? ''),
+    district_name: String(loc?.district_name ?? ''),
+    city_name: String(loc?.city_name ?? ''),
+    pincode: String(loc?.pincode ?? ''),
+    locality: String(loc?.locality ?? ''),
+    full_address: String(loc?.full_address ?? ''),
+    address_privacy: (loc?.address_privacy as AddressPrivacy) ?? 'CITY_LOCALITY_ONLY',
+    amenities: feats,
+    photo_urls: [],
+  };
+}
+
 export const propertyStore = {
   async searchProperties(filters: PropertySearchFilters = {}): Promise<{ items: PropertyListing[]; total: number }> {
     const page = Math.max(1, filters.page ?? 1);
@@ -318,7 +368,10 @@ export const propertyStore = {
     if (supabase) {
       let q = supabase
         .from('properties')
-        .select('*, listings!inner(title, slug, description, is_featured, status), property_details!inner(*), property_pricing!inner(*), property_locations!inner(*)', { count: 'exact' });
+        .select(
+          '*, listings!inner(title, slug, description, is_featured, status), property_details!inner(*), property_pricing!inner(*), property_locations!inner(*), property_features(amenity_label)',
+          { count: 'exact' }
+        );
       if (!filters.includeUnapproved) {
         q = q.eq('status', 'ACTIVE').eq('listings.status', 'APPROVED');
       }
@@ -328,47 +381,29 @@ export const propertyStore = {
       if (filters.purpose && filters.purpose !== 'ALL') {
         q = q.eq('purpose', filters.purpose);
       }
+      if (filters.pincode?.trim()) {
+        q = q.eq('property_locations.pincode', filters.pincode.trim());
+      }
       const from = (page - 1) * pageSize;
       const { data, count, error } = await q.range(from, from + pageSize - 1);
       if (error) throw new Error(error.message);
-      const mapped = (data ?? []).map((row: Record<string, unknown>) => {
-        const l = row.listings as Record<string, unknown>;
-        const d = row.property_details as Record<string, unknown>;
-        const p = row.property_pricing as Record<string, unknown>;
-        const loc = row.property_locations as Record<string, unknown>;
-        return {
-          ...(row as unknown as PropertyListing),
-          title: String(l?.title ?? ''),
-          slug: String(l?.slug ?? ''),
-          description: String(l?.description ?? ''),
-          is_featured: Boolean(l?.is_featured),
-          listing_status: (l?.status as PropertyListing['listing_status']) ?? 'APPROVED',
-          owner_name: 'Verified Lister',
-          area_value: Number(d?.area_value ?? 0),
-          area_unit: (d?.area_unit as AreaUnit) ?? 'SQ_FT',
-          bedrooms: (d?.bedrooms as number | null) ?? null,
-          bathrooms: (d?.bathrooms as number | null) ?? null,
-          furnishing: (d?.furnishing as FurnishingType | null) ?? null,
-          pg_sharing_type: (d?.pg_sharing_type as string | null) ?? null,
-          meals_included: (d?.meals_included as boolean | null) ?? null,
-          gender_preference: (d?.gender_preference as PropertyListing['gender_preference']) ?? null,
-          sale_price: (p?.sale_price as number | null) ?? null,
-          monthly_rent: (p?.monthly_rent as number | null) ?? null,
-          security_deposit: (p?.security_deposit as number | null) ?? null,
-          lease_duration_months: (p?.lease_duration_months as number | null) ?? null,
-          is_negotiable: Boolean(p?.is_negotiable ?? true),
-          location_id: (loc?.location_id as string | null) ?? null,
-          state_name: String(loc?.state_name ?? ''),
-          district_name: String(loc?.district_name ?? ''),
-          city_name: String(loc?.city_name ?? ''),
-          pincode: String(loc?.pincode ?? ''),
-          locality: String(loc?.locality ?? ''),
-          full_address: String(loc?.full_address ?? ''),
-          address_privacy: (loc?.address_privacy as AddressPrivacy) ?? 'CITY_LOCALITY_ONLY',
-          amenities: [],
-          photo_urls: [],
-        } as PropertyListing;
-      });
+      const queryLower = filters.query?.trim().toLowerCase() ?? '';
+      const amenityLower = filters.amenity?.trim().toLowerCase() ?? '';
+      const mapped = (data ?? [])
+        .map((row) => mapDbPropertyRow(row as Record<string, unknown>))
+        .filter((prop) => {
+          const eff = prop.purpose === 'SALE' ? (prop.sale_price ?? 0) : (prop.monthly_rent ?? 0);
+          if (filters.minPrice !== undefined && eff < filters.minPrice) return false;
+          if (filters.maxPrice !== undefined && eff > filters.maxPrice) return false;
+          if (filters.minBedrooms !== undefined && (prop.bedrooms ?? 0) < filters.minBedrooms) return false;
+          if (filters.minArea !== undefined && prop.area_value < filters.minArea) return false;
+          if (amenityLower && !prop.amenities.some((a) => a.toLowerCase().includes(amenityLower))) return false;
+          if (queryLower) {
+            const hay = `${prop.title} ${prop.description} ${prop.city_name} ${prop.locality} ${prop.state_name} ${prop.pincode}`.toLowerCase();
+            if (!hay.includes(queryLower)) return false;
+          }
+          return true;
+        });
       return { items: mapped, total: count ?? mapped.length };
     }
 
@@ -420,6 +455,22 @@ export const propertyStore = {
   },
 
   async getManagedProperties(user: UserWithRoles): Promise<PropertyListing[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let q = supabase
+        .from('properties')
+        .select(
+          '*, listings!inner(title, slug, description, is_featured, status), property_details!inner(*), property_pricing!inner(*), property_locations!inner(*), property_features(amenity_label)'
+        )
+        .order('created_at', { ascending: false });
+      if (!hasAnyAdminRole(user.roles)) {
+        q = q.or(`owner_id.eq.${user.profile.id},authorised_agent_id.eq.${user.profile.id}`);
+      }
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((row) => mapDbPropertyRow(row as Record<string, unknown>));
+    }
+
     const state = readPropSandbox();
     return state.properties.filter(
       (p) =>
@@ -477,6 +528,137 @@ export const propertyStore = {
     const slug = `${payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 6)}`;
     const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
 
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const dbLocId = toDbUuid(payload.location_id);
+      const { data: listing, error: lErr } = await supabase
+        .from('listings')
+        .insert({
+          owner_id: user.profile.id,
+          module_key: 'property',
+          location_id: dbLocId,
+          title: payload.title.trim(),
+          slug,
+          summary: `${payload.property_type} in ${payload.city_name}`,
+          description: payload.description.trim(),
+          status: 'PENDING_REVIEW',
+        })
+        .select('*')
+        .single();
+      if (lErr) throw new Error(lErr.message);
+
+      const agentId =
+        toDbUuid(payload.authorised_agent_id) ??
+        (payload.lister_role === 'AUTHORISED_AGENT' ? user.profile.id : null);
+
+      const { data: prop, error: pErr } = await supabase
+        .from('properties')
+        .insert({
+          listing_id: (listing as { id: string }).id,
+          owner_id: user.profile.id,
+          authorised_agent_id: agentId,
+          property_type: payload.property_type,
+          purpose: payload.purpose,
+          is_resale: payload.is_resale,
+          lister_role: payload.lister_role,
+          expires_at: expiresAt,
+          status: 'ACTIVE',
+        })
+        .select('*')
+        .single();
+      if (pErr) throw new Error(pErr.message);
+
+      const propId = (prop as { id: string }).id;
+      const [detRes, priceRes, locRes] = await Promise.all([
+        supabase.from('property_details').insert({
+          property_id: propId,
+          area_value: payload.area_value,
+          area_unit: payload.area_unit,
+          bedrooms: payload.bedrooms,
+          bathrooms: payload.bathrooms,
+          furnishing: payload.furnishing,
+          pg_sharing_type: payload.pg_sharing_type ?? null,
+          meals_included: payload.meals_included ?? null,
+          gender_preference: payload.gender_preference ?? null,
+        }),
+        supabase.from('property_pricing').insert({
+          property_id: propId,
+          sale_price: payload.sale_price,
+          monthly_rent: payload.monthly_rent,
+          security_deposit: payload.security_deposit,
+          lease_duration_months: payload.lease_duration_months,
+          is_negotiable: payload.is_negotiable,
+        }),
+        supabase.from('property_locations').insert({
+          property_id: propId,
+          location_id: dbLocId,
+          state_name: payload.state_name,
+          district_name: payload.district_name,
+          city_name: payload.city_name,
+          pincode: payload.pincode.trim(),
+          locality: payload.locality.trim(),
+          full_address: payload.full_address.trim(),
+          address_privacy: payload.address_privacy,
+        }),
+      ]);
+      if (detRes.error) throw new Error(detRes.error.message);
+      if (priceRes.error) throw new Error(priceRes.error.message);
+      if (locRes.error) throw new Error(locRes.error.message);
+
+      if (payload.amenities.length > 0) {
+        await supabase.from('property_features').insert(
+          payload.amenities.map((label) => ({
+            property_id: propId,
+            amenity_key: label.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+            amenity_label: label,
+          }))
+        );
+      }
+
+      return {
+        id: propId,
+        listing_id: (listing as { id: string }).id,
+        owner_id: user.profile.id,
+        owner_name: user.profile.full_name,
+        authorised_agent_id: agentId,
+        lister_role: payload.lister_role,
+        title: payload.title.trim(),
+        slug,
+        description: payload.description.trim(),
+        property_type: payload.property_type,
+        purpose: payload.purpose,
+        is_resale: payload.is_resale,
+        is_featured: false,
+        status: 'ACTIVE',
+        listing_status: 'PENDING_REVIEW',
+        expires_at: expiresAt,
+        location_id: dbLocId,
+        state_name: payload.state_name,
+        district_name: payload.district_name,
+        city_name: payload.city_name,
+        pincode: payload.pincode.trim(),
+        locality: payload.locality.trim(),
+        full_address: payload.full_address.trim(),
+        address_privacy: payload.address_privacy,
+        area_value: payload.area_value,
+        area_unit: payload.area_unit,
+        bedrooms: payload.bedrooms,
+        bathrooms: payload.bathrooms,
+        furnishing: payload.furnishing,
+        pg_sharing_type: payload.pg_sharing_type ?? null,
+        meals_included: payload.meals_included ?? null,
+        gender_preference: payload.gender_preference ?? null,
+        sale_price: payload.sale_price,
+        monthly_rent: payload.monthly_rent,
+        security_deposit: payload.security_deposit,
+        lease_duration_months: payload.lease_duration_months,
+        is_negotiable: payload.is_negotiable,
+        amenities: payload.amenities,
+        photo_urls: [],
+        created_at: (prop as { created_at: string }).created_at,
+      };
+    }
+
     const state = readPropSandbox();
     const created: PropertyListing = {
       id: makeId('prop'),
@@ -526,6 +708,21 @@ export const propertyStore = {
   },
 
   async updatePropertyStatus(user: UserWithRoles, propertyId: string, status: PropertyStatus): Promise<PropertyListing> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { error } = await supabase.from('properties').update({ status }).eq('id', propertyId);
+      if (error) throw new Error(error.message);
+      const { data: row, error: fetchErr } = await supabase
+        .from('properties')
+        .select(
+          '*, listings!inner(title, slug, description, is_featured, status), property_details!inner(*), property_pricing!inner(*), property_locations!inner(*), property_features(amenity_label)'
+        )
+        .eq('id', propertyId)
+        .single();
+      if (fetchErr || !row) throw new Error('Property not found.');
+      return mapDbPropertyRow(row as Record<string, unknown>);
+    }
+
     const state = readPropSandbox();
     const prop = state.properties.find((p) => p.id === propertyId);
     if (!prop) throw new Error('Property not found.');
@@ -540,6 +737,25 @@ export const propertyStore = {
     propertyId: string,
     payload: { document_type: PropertyDocument['document_type']; file_name: string }
   ): Promise<PropertyDocument> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('property_documents')
+        .insert({
+          property_id: propertyId,
+          uploaded_by: user.profile.id,
+          document_type: payload.document_type,
+          file_name: payload.file_name,
+          storage_path: `${user.profile.id}/${propertyId}/${payload.file_name}`,
+          review_status: 'PENDING',
+          disclaimer_text: NON_LEGAL_TITLE_DISCLAIMER,
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as PropertyDocument;
+    }
+
     const state = readPropSandbox();
     const prop = state.properties.find((p) => p.id === propertyId);
     if (!prop) throw new Error('Property not found.');
@@ -563,6 +779,15 @@ export const propertyStore = {
   },
 
   async getPropertyDocuments(user: UserWithRoles, propertyId?: string): Promise<PropertyDocument[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let q = supabase.from('property_documents').select('*').order('created_at', { ascending: false });
+      if (propertyId) q = q.eq('property_id', propertyId);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []) as PropertyDocument[];
+    }
+
     const state = readPropSandbox();
     const allowedPropIds = new Set(
       state.properties
@@ -594,6 +819,38 @@ export const propertyStore = {
     }
   ): Promise<PropertyEnquiry> {
     if (!payload.message.trim()) throw new Error('Enquiry message is required.');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: propRow, error: propErr } = await supabase
+        .from('properties')
+        .select('id, owner_id, authorised_agent_id, status, listings(title)')
+        .eq('id', payload.propertyId)
+        .single();
+      if (propErr || !propRow || propRow.status !== 'ACTIVE') {
+        throw new Error('This property is not accepting enquiries.');
+      }
+      const { data: enqRow, error: enqErr } = await supabase
+        .from('property_enquiries')
+        .insert({
+          property_id: propRow.id,
+          sender_id: user.profile.id,
+          owner_id: propRow.owner_id,
+          authorised_agent_id: propRow.authorised_agent_id,
+          enquiry_type: payload.enquiryType,
+          preferred_visit_date: payload.preferredVisitDate || null,
+          message: payload.message.trim(),
+          status: 'NEW',
+        })
+        .select('*')
+        .single();
+      if (enqErr) throw new Error(enqErr.message);
+      return {
+        ...(enqRow as PropertyEnquiry),
+        property_title: ((propRow.listings as { title?: string } | null)?.title) ?? 'Property',
+        sender_name: user.profile.full_name,
+      };
+    }
+
     const state = readPropSandbox();
     const prop = state.properties.find((p) => p.id === payload.propertyId);
     if (!prop || prop.status !== 'ACTIVE') {
@@ -621,6 +878,21 @@ export const propertyStore = {
   },
 
   async getPropertyEnquiries(user: UserWithRoles): Promise<PropertyEnquiry[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('property_enquiries')
+        .select('*, properties(listings(title))')
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r: Record<string, unknown>) => ({
+        ...(r as unknown as PropertyEnquiry),
+        property_title:
+          ((r.properties as { listings?: { title?: string } } | null)?.listings?.title) ?? 'Property',
+        sender_name: 'Member',
+      }));
+    }
+
     const state = readPropSandbox();
     return state.enquiries.filter(
       (e) =>
@@ -637,6 +909,20 @@ export const propertyStore = {
     status: PropertyEnquiryStatus,
     reply?: string
   ): Promise<PropertyEnquiry> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const patch: Record<string, unknown> = { status };
+      if (reply !== undefined) patch.owner_reply = reply.trim();
+      const { data, error } = await supabase
+        .from('property_enquiries')
+        .update(patch)
+        .eq('id', enquiryId)
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return { ...(data as PropertyEnquiry), property_title: 'Property', sender_name: 'Member' };
+    }
+
     const state = readPropSandbox();
     const enq = state.enquiries.find((e) => e.id === enquiryId);
     if (!enq) throw new Error('Enquiry not found.');
@@ -660,6 +946,24 @@ export const propertyStore = {
     details: string
   ): Promise<ModerationReport> {
     if (!reason.trim()) throw new Error('Report reason is required.');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('moderation_reports')
+        .insert({
+          reporter_id: user.profile.id,
+          target_type: 'LISTING',
+          target_id: propertyId,
+          reason: reason.trim(),
+          details: details.trim() || null,
+          status: 'OPEN',
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as ModerationReport;
+    }
+
     const state = readPropSandbox();
     const report: ModerationReport = {
       id: makeId('rep'),

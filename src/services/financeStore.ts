@@ -343,6 +343,115 @@ function finalizeSuccessfulPayment(
   return { payment, subscription: activatedSub, invoice: issuedInvoice };
 }
 
+function mapDbPlan(row: Record<string, unknown>): SubscriptionPlan {
+  const feats = Array.isArray(row.plan_features)
+    ? (row.plan_features as Array<{ feature_label?: string; is_included?: boolean }>)
+        .filter((f) => f.is_included !== false && f.feature_label)
+        .map((f) => String(f.feature_label))
+    : [];
+  return {
+    id: String(row.id),
+    code: String(row.code),
+    name: String(row.name),
+    description: String(row.description ?? ''),
+    monthly_price_inr: Number(row.monthly_price_inr ?? 0),
+    annual_price_inr: Number(row.annual_price_inr ?? 0),
+    listing_limit: Number(row.listing_limit ?? 1),
+    user_limit: Number(row.user_limit ?? 1),
+    enquiry_limit: Number(row.enquiry_limit ?? 25),
+    featured_credits: Number(row.featured_credits ?? 0),
+    auto_renew_allowed: Boolean(row.auto_renew_allowed),
+    is_highlight: Boolean(row.is_highlight),
+    is_active: Boolean(row.is_active),
+    sort_order: Number(row.sort_order ?? 10),
+    features: feats.length > 0 ? feats : [String(row.description ?? '')].filter(Boolean),
+  };
+}
+
+function mapDbPayment(row: Record<string, unknown>): PaymentRecord {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>;
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    subscription_id: row.subscription_id ? String(row.subscription_id) : null,
+    purpose: (row.purpose as PaymentRecord['purpose']) ?? 'SUBSCRIPTION',
+    payment_method: (row.payment_method as PaymentMethod) ?? 'RAZORPAY_CHECKOUT',
+    upi_vpa: row.upi_vpa ? String(row.upi_vpa) : null,
+    upi_utr_reference: row.upi_utr_reference ? String(row.upi_utr_reference) : null,
+    upi_verification_status: (row.upi_verification_status as PaymentRecord['upi_verification_status']) ?? 'NONE',
+    razorpay_order_id: String(row.razorpay_order_id ?? ''),
+    razorpay_payment_id: row.razorpay_payment_id ? String(row.razorpay_payment_id) : null,
+    razorpay_signature_verified: Boolean(row.razorpay_signature_verified),
+    idempotency_key: String(row.idempotency_key),
+    base_amount_inr: Number(row.base_amount_inr ?? 0),
+    discount_amount_inr: Number(row.discount_amount_inr ?? 0),
+    tax_amount_inr: Number(row.tax_amount_inr ?? 0),
+    total_amount_inr: Number(row.total_amount_inr ?? 0),
+    currency: 'INR',
+    status: (row.status as PaymentRecord['status']) ?? 'CREATED',
+    failure_reason: row.failure_reason ? String(row.failure_reason) : null,
+    consent_confirmed: Boolean(row.consent_confirmed),
+    plan_code: meta.plan_code ? String(meta.plan_code) : meta.planCode ? String(meta.planCode) : undefined,
+    billing_cycle: ((meta.billing_cycle ?? meta.billingCycle) as BillingCycle | undefined) ?? undefined,
+    customer_state_code: String(meta.customer_state_code ?? SUPPLIER_STATE_CODE),
+    created_at: String(row.created_at ?? nowIso()),
+  };
+}
+
+function mapDbSubscription(row: Record<string, unknown>): SubscriptionRecord {
+  const planObj = row.plans as { code?: string; name?: string } | null | undefined;
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    plan_id: String(row.plan_id),
+    plan_code: String(planObj?.code ?? row.plan_code ?? 'FREE'),
+    plan_name: String(planObj?.name ?? row.plan_name ?? 'Plan'),
+    billing_cycle: (row.billing_cycle as BillingCycle) ?? 'MONTHLY',
+    status: (row.status as SubscriptionRecord['status']) ?? 'ACTIVE',
+    starts_at: row.starts_at ? String(row.starts_at) : null,
+    expires_at: row.expires_at ? String(row.expires_at) : null,
+    auto_renew_authorized: Boolean(row.auto_renew_authorized),
+    last_reminder_stage: (row.last_reminder_stage as ReminderStage) ?? 'NONE',
+    created_at: String(row.created_at ?? nowIso()),
+  };
+}
+
+function mapDbInvoice(row: Record<string, unknown>): InvoiceRecord {
+  return {
+    id: String(row.id),
+    invoice_number: String(row.invoice_number),
+    payment_id: String(row.payment_id),
+    user_id: String(row.user_id),
+    customer_name: String(row.customer_name),
+    customer_gstin: row.customer_gstin ? String(row.customer_gstin) : null,
+    customer_state_code: String(row.customer_state_code ?? SUPPLIER_STATE_CODE),
+    supplier_state_code: String(row.supplier_state_code ?? SUPPLIER_STATE_CODE),
+    tax_type: (row.tax_type as InvoiceRecord['tax_type']) ?? 'INTRA_STATE',
+    taxable_amount_inr: Number(row.taxable_amount_inr ?? 0),
+    cgst_inr: Number(row.cgst_inr ?? 0),
+    sgst_inr: Number(row.sgst_inr ?? 0),
+    igst_inr: Number(row.igst_inr ?? 0),
+    total_amount_inr: Number(row.total_amount_inr ?? 0),
+    amount_in_words: String(row.amount_in_words ?? ''),
+    status: (row.status as InvoiceRecord['status']) ?? 'ISSUED',
+    issued_at: String(row.issued_at ?? nowIso()),
+  };
+}
+
+function mapDbRefund(row: Record<string, unknown>): RefundRecord {
+  return {
+    id: String(row.id),
+    payment_id: String(row.payment_id),
+    user_id: String(row.user_id),
+    razorpay_refund_id: row.razorpay_refund_id ? String(row.razorpay_refund_id) : null,
+    amount_inr: Number(row.amount_inr ?? 0),
+    reason: String(row.reason ?? ''),
+    status: (row.status as RefundRecord['status']) ?? 'REQUESTED',
+    processed_at: row.processed_at ? String(row.processed_at) : null,
+    created_at: String(row.created_at ?? nowIso()),
+  };
+}
+
 export const financeStore = {
   async getGatewayConfig(): Promise<PaymentGatewayConfig> {
     const supabase = getSupabaseClient();
@@ -388,6 +497,15 @@ export const financeStore = {
   },
 
   async getPlans(includeInactive = false): Promise<SubscriptionPlan[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      let q = supabase.from('plans').select('*, plan_features(feature_label, is_included)').order('sort_order', { ascending: true });
+      if (!includeInactive) q = q.eq('is_active', true);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => mapDbPlan(r as Record<string, unknown>));
+    }
+
     const state = readFinanceSandbox();
     return [...state.plans]
       .filter((p) => includeInactive || p.is_active)
@@ -395,10 +513,30 @@ export const financeStore = {
   },
 
   async getServiceCharges(): Promise<ServiceChargeRule[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.from('service_charges').select('*').eq('is_active', true);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => ({
+        ...(r as unknown as ServiceChargeRule),
+        amount_or_rate: Number((r as Record<string, unknown>).amount_or_rate ?? 0),
+        gst_percent: Number((r as Record<string, unknown>).gst_percent ?? 18),
+      }));
+    }
     return [...readFinanceSandbox().serviceCharges];
   },
 
   async getCommissionRules(): Promise<CommissionRule[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase.from('commission_rules').select('*').eq('is_active', true);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((r) => ({
+        ...(r as unknown as CommissionRule),
+        rate_or_amount: Number((r as Record<string, unknown>).rate_or_amount ?? 0),
+        gst_percent: Number((r as Record<string, unknown>).gst_percent ?? 18),
+      }));
+    }
     return [...readFinanceSandbox().commissionRules];
   },
 
@@ -408,6 +546,51 @@ export const financeStore = {
     customerStateCode: string;
     couponCode?: string;
   }): Promise<CheckoutQuote> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const plans = await this.getPlans(false);
+      const plan = plans.find((p) => p.code === input.planCode && p.is_active);
+      if (!plan) throw new Error('Selected subscription plan is not available.');
+
+      const baseAmountInr =
+        input.billingCycle === 'ANNUAL' ? plan.annual_price_inr : plan.monthly_price_inr;
+
+      let discountAmountInr = 0;
+      let appliedCouponCode: string | null = null;
+      if (input.couponCode?.trim()) {
+        const cleanCode = input.couponCode.trim().toUpperCase();
+        const { data: coupon } = await supabase
+          .from('promotional_coupons')
+          .select('*')
+          .eq('code', cleanCode)
+          .eq('is_active', true)
+          .maybeSingle();
+        if (!coupon) throw new Error('Invalid or expired promotional coupon code.');
+        appliedCouponCode = String(coupon.code);
+        discountAmountInr =
+          coupon.discount_type === 'PERCENT'
+            ? Math.round(((baseAmountInr * Number(coupon.discount_value)) / 100) * 100) / 100
+            : Math.min(baseAmountInr, Number(coupon.discount_value));
+      }
+
+      const taxable = Math.max(0, baseAmountInr - discountAmountInr);
+      const gst = calculateIndianGst(taxable, input.customerStateCode || SUPPLIER_STATE_CODE);
+      return {
+        plan,
+        billingCycle: input.billingCycle,
+        baseAmountInr,
+        discountAmountInr,
+        taxableAmountInr: gst.taxableAmountInr,
+        taxType: gst.taxType,
+        cgstInr: gst.cgstInr,
+        sgstInr: gst.sgstInr,
+        igstInr: gst.igstInr,
+        totalTaxInr: gst.totalTaxInr,
+        totalAmountInr: gst.totalAmountInr,
+        appliedCouponCode,
+      };
+    }
+
     const state = readFinanceSandbox();
     const plan = state.plans.find((p) => p.code === input.planCode && p.is_active);
     if (!plan) throw new Error('Selected subscription plan is not available.');
@@ -462,6 +645,70 @@ export const financeStore = {
   ): Promise<{ payment: PaymentRecord; quote: CheckoutQuote }> {
     if (!input.consentConfirmed) {
       throw new Error('Explicit customer consent is required before initiating payment.');
+    }
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const quote = await this.previewPlanCheckout(input);
+      const { data: existingRow } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('idempotency_key', input.idempotencyKey)
+        .maybeSingle();
+      if (existingRow) {
+        return { payment: mapDbPayment(existingRow as Record<string, unknown>), quote };
+      }
+
+      const method: PaymentMethod = input.paymentMethod ?? 'RAZORPAY_CHECKOUT';
+      const gw = await this.getGatewayConfig();
+
+      // For Razorpay Checkout in LIVE mode (or when razorpay_key_id is configured), invoke server Edge Function
+      if (method === 'RAZORPAY_CHECKOUT' && (gw.mode === 'LIVE' || gw.razorpay_key_id) && quote.totalAmountInr > 0) {
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke('razorpay-create-order', {
+          body: {
+            planCode: input.planCode,
+            billingCycle: input.billingCycle,
+            customerStateCode: input.customerStateCode || SUPPLIER_STATE_CODE,
+            couponCode: input.couponCode,
+            idempotencyKey: input.idempotencyKey,
+            consentConfirmed: true,
+          },
+        });
+        if (fnErr || !fnData?.payment) {
+          throw new Error(fnErr?.message || fnData?.error || 'Unable to create Razorpay order on server.');
+        }
+        return { payment: mapDbPayment(fnData.payment as Record<string, unknown>), quote };
+      }
+
+      const orderId = `${method === 'UPI_INTENT_QR' ? 'order_upi' : 'order_sbx'}_${Math.random().toString(36).slice(2, 11)}`;
+      const { data: inserted, error: insErr } = await supabase
+        .from('payments')
+        .insert({
+          user_id: user.profile.id,
+          purpose: 'SUBSCRIPTION',
+          payment_method: method,
+          upi_vpa: method === 'UPI_INTENT_QR' ? gw.upi_vpa : null,
+          upi_verification_status: 'NONE',
+          razorpay_order_id: orderId,
+          razorpay_signature_verified: false,
+          idempotency_key: input.idempotencyKey,
+          base_amount_inr: quote.baseAmountInr,
+          discount_amount_inr: quote.discountAmountInr,
+          tax_amount_inr: quote.totalTaxInr,
+          total_amount_inr: quote.totalAmountInr,
+          currency: 'INR',
+          status: 'CREATED',
+          consent_confirmed: true,
+          metadata: {
+            plan_code: quote.plan.code,
+            billing_cycle: input.billingCycle,
+            customer_state_code: input.customerStateCode || SUPPLIER_STATE_CODE,
+          },
+        })
+        .select('*')
+        .single();
+      if (insErr) throw new Error(insErr.message);
+      return { payment: mapDbPayment(inserted as Record<string, unknown>), quote };
     }
 
     const state = readFinanceSandbox();
@@ -519,6 +766,41 @@ export const financeStore = {
     if (!isValidUtrReference(cleanUtr)) {
       throw new Error('Enter a valid 10–22 character alphanumeric UPI UTR / Reference number.');
     }
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const gw = await this.getGatewayConfig();
+      const { data: existing } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('razorpay_order_id', orderId)
+        .eq('user_id', user.profile.id)
+        .maybeSingle();
+      if (!existing) throw new Error('Payment order not found.');
+      if (existing.status === 'SUCCEEDED') return mapDbPayment(existing as Record<string, unknown>);
+
+      const { data: updated, error } = await supabase
+        .from('payments')
+        .update({
+          payment_method: 'UPI_INTENT_QR',
+          upi_vpa: gw.upi_vpa,
+          upi_utr_reference: cleanUtr,
+          upi_verification_status: 'PENDING_VERIFICATION',
+          status: 'PENDING',
+        })
+        .eq('id', existing.id)
+        .eq('user_id', user.profile.id)
+        .select('*')
+        .single();
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('This UTR reference number has already been submitted.');
+        }
+        throw new Error(error.message);
+      }
+      return mapDbPayment(updated as Record<string, unknown>);
+    }
+
     const state = readFinanceSandbox();
     const payment = state.payments.find(
       (p) => p.razorpay_order_id === orderId && p.user_id === user.profile.id
@@ -550,6 +832,126 @@ export const financeStore = {
     if (!hasAdminScope(actor.roles, 'finance')) {
       throw new Error('Unauthorized: Finance Admin permission required.');
     }
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: payRow, error: payErr } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .single();
+      if (payErr || !payRow) throw new Error('Payment not found.');
+
+      if (!approved) {
+        const { data: rejRow, error: rejErr } = await supabase
+          .from('payments')
+          .update({
+            upi_verification_status: 'REJECTED',
+            status: 'FAILED',
+            failure_reason: notes?.trim() || 'UTR could not be verified against bank settlement.',
+          })
+          .eq('id', paymentId)
+          .select('*')
+          .single();
+        if (rejErr) throw new Error(rejErr.message);
+        return { payment: mapDbPayment(rejRow as Record<string, unknown>), subscription: null, invoice: null };
+      }
+
+      const mappedPay = mapDbPayment(payRow as Record<string, unknown>);
+      const { data: okRow, error: okErr } = await supabase
+        .from('payments')
+        .update({
+          upi_verification_status: 'VERIFIED',
+          status: 'SUCCEEDED',
+          razorpay_payment_id: `upi_utr_${mappedPay.upi_utr_reference || Date.now()}`,
+          razorpay_signature_verified: true,
+        })
+        .eq('id', paymentId)
+        .select('*')
+        .single();
+      if (okErr) throw new Error(okErr.message);
+
+      let activatedSub: SubscriptionRecord | null = null;
+      if (mappedPay.purpose === 'SUBSCRIPTION' && mappedPay.plan_code) {
+        const { data: planRow } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('code', mappedPay.plan_code)
+          .maybeSingle();
+        if (planRow) {
+          await supabase
+            .from('subscriptions')
+            .update({ status: 'EXPIRED' })
+            .eq('user_id', mappedPay.user_id)
+            .eq('status', 'ACTIVE');
+
+          const startsAt = new Date();
+          const days = mappedPay.billing_cycle === 'ANNUAL' ? 365 : 30;
+          const expiresAt = new Date(startsAt.getTime() + days * 24 * 60 * 60 * 1000);
+          const { data: subRow, error: subErr } = await supabase
+            .from('subscriptions')
+            .insert({
+              user_id: mappedPay.user_id,
+              plan_id: planRow.id,
+              billing_cycle: mappedPay.billing_cycle ?? 'MONTHLY',
+              status: 'ACTIVE',
+              starts_at: startsAt.toISOString(),
+              expires_at: expiresAt.toISOString(),
+              auto_renew_authorized: false,
+              last_reminder_stage: 'NONE',
+            })
+            .select('*, plans(code, name)')
+            .single();
+          if (subErr) throw new Error(subErr.message);
+          activatedSub = mapDbSubscription(subRow as Record<string, unknown>);
+          await supabase.from('payments').update({ subscription_id: activatedSub.id }).eq('id', paymentId);
+        }
+      }
+
+      let issuedInvoice: InvoiceRecord | null = null;
+      if (mappedPay.total_amount_inr > 0) {
+        const { data: existingInv } = await supabase
+          .from('invoices')
+          .select('*')
+          .eq('payment_id', paymentId)
+          .maybeSingle();
+        if (existingInv) {
+          issuedInvoice = mapDbInvoice(existingInv as Record<string, unknown>);
+        } else {
+          const taxable = Math.max(0, mappedPay.base_amount_inr - mappedPay.discount_amount_inr);
+          const gst = calculateIndianGst(taxable, mappedPay.customer_state_code);
+          const { data: invRow, error: invErr } = await supabase
+            .from('invoices')
+            .insert({
+              invoice_number: `SCHI-2026-${Date.now().toString().slice(-6)}`,
+              payment_id: paymentId,
+              user_id: mappedPay.user_id,
+              customer_name: customerName || 'Customer',
+              customer_state_code: mappedPay.customer_state_code,
+              supplier_state_code: SUPPLIER_STATE_CODE,
+              tax_type: gst.taxType,
+              taxable_amount_inr: gst.taxableAmountInr,
+              cgst_inr: gst.cgstInr,
+              sgst_inr: gst.sgstInr,
+              igst_inr: gst.igstInr,
+              total_amount_inr: gst.totalAmountInr,
+              amount_in_words: formatRupeesInWords(gst.totalAmountInr),
+              status: 'ISSUED',
+            })
+            .select('*')
+            .single();
+          if (invErr) throw new Error(invErr.message);
+          issuedInvoice = mapDbInvoice(invRow as Record<string, unknown>);
+        }
+      }
+
+      return {
+        payment: mapDbPayment(okRow as Record<string, unknown>),
+        subscription: activatedSub,
+        invoice: issuedInvoice,
+      };
+    }
+
     const state = readFinanceSandbox();
     const payment = state.payments.find((p) => p.id === paymentId);
     if (!payment) throw new Error('Payment not found.');
@@ -581,6 +983,25 @@ export const financeStore = {
     user: UserWithRoles,
     payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }
   ): Promise<{ payment: PaymentRecord; subscription: SubscriptionRecord | null; invoice: InvoiceRecord | null }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const gw = await this.getGatewayConfig();
+      if (gw.mode === 'LIVE' || gw.razorpay_key_id) {
+        const { data: fnData, error: fnErr } = await supabase.functions.invoke('razorpay-verify-payment', {
+          body: payload,
+        });
+        if (fnErr || !fnData?.payment) {
+          throw new Error(fnErr?.message || fnData?.error || 'Server-side Razorpay verification failed.');
+        }
+        return {
+          payment: mapDbPayment(fnData.payment as Record<string, unknown>),
+          subscription: fnData.subscription ? mapDbSubscription(fnData.subscription as Record<string, unknown>) : null,
+          invoice: fnData.invoice ? mapDbInvoice(fnData.invoice as Record<string, unknown>) : null,
+        };
+      }
+      throw new Error('Razorpay Sandbox signature verification is disabled in live Supabase mode without Edge Function secrets; use UPI QR + Admin UTR Verification or configure Razorpay keys.');
+    }
+
     const state = readFinanceSandbox();
     const payment = state.payments.find((p) => p.razorpay_order_id === payload.razorpay_order_id);
     if (!payment) throw new Error('Payment order not found.');
@@ -653,6 +1074,22 @@ export const financeStore = {
     invoices: InvoiceRecord[];
     refunds: RefundRecord[];
   }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const [subsRes, paysRes, invsRes, refsRes] = await Promise.all([
+        supabase.from('subscriptions').select('*, plans(code, name)').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('payments').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').eq('user_id', userId).order('issued_at', { ascending: false }),
+        supabase.from('refunds').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      ]);
+      return {
+        subscriptions: (subsRes.data ?? []).map((r) => mapDbSubscription(r as Record<string, unknown>)),
+        payments: (paysRes.data ?? []).map((r) => mapDbPayment(r as Record<string, unknown>)),
+        invoices: (invsRes.data ?? []).map((r) => mapDbInvoice(r as Record<string, unknown>)),
+        refunds: (refsRes.data ?? []).map((r) => mapDbRefund(r as Record<string, unknown>)),
+      };
+    }
+
     const state = readFinanceSandbox();
     return {
       subscriptions: state.subscriptions.filter((s) => s.user_id === userId),
@@ -663,6 +1100,28 @@ export const financeStore = {
   },
 
   async getEffectiveListingLimit(userId: string): Promise<number> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: subs } = await supabase
+        .from('subscriptions')
+        .select('expires_at, plans(listing_limit)')
+        .eq('user_id', userId)
+        .eq('status', 'ACTIVE')
+        .order('created_at', { ascending: false });
+      const active = (subs ?? []).find(
+        (s: { expires_at?: string | null }) => !s.expires_at || new Date(s.expires_at).getTime() > Date.now()
+      ) as { plans?: { listing_limit?: number } | null } | undefined;
+      if (active?.plans?.listing_limit !== undefined) {
+        return Number(active.plans.listing_limit);
+      }
+      const { data: freePlan } = await supabase
+        .from('plans')
+        .select('listing_limit')
+        .eq('code', 'FREE')
+        .maybeSingle();
+      return Number(freePlan?.listing_limit ?? 1);
+    }
+
     const state = readFinanceSandbox();
     const active = state.subscriptions.find(
       (s) => s.user_id === userId && s.status === 'ACTIVE' && (!s.expires_at || new Date(s.expires_at).getTime() > Date.now())
@@ -675,6 +1134,32 @@ export const financeStore = {
 
   async requestRefund(user: UserWithRoles, paymentId: string, reason: string): Promise<RefundRecord> {
     if (!reason.trim()) throw new Error('Refund reason is required.');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: pay } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('id', paymentId)
+        .eq('user_id', user.profile.id)
+        .single();
+      if (!pay) throw new Error('Payment record not found.');
+      if (pay.status !== 'SUCCEEDED') throw new Error('Only succeeded payments can be refunded.');
+
+      const { data: refRow, error } = await supabase
+        .from('refunds')
+        .insert({
+          payment_id: pay.id,
+          user_id: user.profile.id,
+          amount_inr: Number(pay.total_amount_inr),
+          reason: reason.trim(),
+          status: 'REQUESTED',
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return mapDbRefund(refRow as Record<string, unknown>);
+    }
+
     const state = readFinanceSandbox();
     const payment = state.payments.find((p) => p.id === paymentId && p.user_id === user.profile.id);
     if (!payment) throw new Error('Payment record not found.');
@@ -760,6 +1245,18 @@ export const financeStore = {
     if (!hasAdminScope(actor.roles, 'finance')) {
       throw new Error('Unauthorized: Finance Admin permission required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('plans')
+        .update(updates)
+        .eq('id', planId)
+        .select('*, plan_features(feature_label, is_included)')
+        .single();
+      if (error) throw new Error(error.message);
+      return mapDbPlan(data as Record<string, unknown>);
+    }
+
     const state = readFinanceSandbox();
     const plan = state.plans.find((p) => p.id === planId);
     if (!plan) throw new Error('Plan not found.');
@@ -782,6 +1279,32 @@ export const financeStore = {
     if (!hasAdminScope(actor.roles, 'finance')) {
       throw new Error('Unauthorized: Finance Admin permission required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const [plans, gatewayConfig, subsRes, paysRes, invsRes, refsRes, serviceCharges, commissionRules] =
+        await Promise.all([
+          this.getPlans(true),
+          this.getGatewayConfig(),
+          supabase.from('subscriptions').select('*, plans(code, name)').order('created_at', { ascending: false }),
+          supabase.from('payments').select('*').order('created_at', { ascending: false }),
+          supabase.from('invoices').select('*').order('issued_at', { ascending: false }),
+          supabase.from('refunds').select('*').order('created_at', { ascending: false }),
+          this.getServiceCharges(),
+          this.getCommissionRules(),
+        ]);
+      return {
+        plans,
+        subscriptions: (subsRes.data ?? []).map((r) => mapDbSubscription(r as Record<string, unknown>)),
+        payments: (paysRes.data ?? []).map((r) => mapDbPayment(r as Record<string, unknown>)),
+        invoices: (invsRes.data ?? []).map((r) => mapDbInvoice(r as Record<string, unknown>)),
+        refunds: (refsRes.data ?? []).map((r) => mapDbRefund(r as Record<string, unknown>)),
+        serviceCharges,
+        commissionRules,
+        reminderLogs: [],
+        gatewayConfig,
+      };
+    }
+
     const state = readFinanceSandbox();
     return {
       plans: state.plans,
@@ -804,6 +1327,35 @@ export const financeStore = {
     if (!hasAdminScope(actor.roles, 'finance')) {
       throw new Error('Unauthorized: Finance Admin permission required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: refRow, error: getErr } = await supabase
+        .from('refunds')
+        .select('*')
+        .eq('id', refundId)
+        .single();
+      if (getErr || !refRow) throw new Error('Refund not found.');
+
+      const refundPatch: Record<string, unknown> = {
+        status: decision,
+        processed_by: actor.profile.id,
+        processed_at: nowIso(),
+      };
+      if (decision === 'PROCESSED') {
+        refundPatch.razorpay_refund_id = `rfnd_${Math.random().toString(36).slice(2, 10)}`;
+        await supabase.from('payments').update({ status: 'REFUNDED' }).eq('id', refRow.payment_id);
+        await supabase.from('invoices').update({ status: 'REFUNDED' }).eq('payment_id', refRow.payment_id);
+      }
+      const { data: updated, error: updErr } = await supabase
+        .from('refunds')
+        .update(refundPatch)
+        .eq('id', refundId)
+        .select('*')
+        .single();
+      if (updErr) throw new Error(updErr.message);
+      return mapDbRefund(updated as Record<string, unknown>);
+    }
+
     const state = readFinanceSandbox();
     const ref = state.refunds.find((r) => r.id === refundId);
     if (!ref) throw new Error('Refund not found.');

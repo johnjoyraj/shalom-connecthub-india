@@ -420,14 +420,16 @@ export function PaymentsAndBillingPage() {
                   <QrCode className="h-4 w-4" />
                   <span>Generate UPI QR &amp; Order</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSandboxPay(false)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  <span>Pay &amp; Verify (Sandbox Success)</span>
-                </button>
+                {gatewayConfig?.mode !== 'LIVE' ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSandboxPay(false)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    <span>Pay &amp; Verify (Sandbox Success)</span>
+                  </button>
+                ) : null}
               </div>
 
               {activeUpiOrder && upiQrDataUrl && upiUri ? (
@@ -486,21 +488,25 @@ export function PaymentsAndBillingPage() {
                   <span>Pay with Razorpay Checkout</span>
                 </button>
               ) : null}
-              <button
-                type="button"
-                onClick={() => handleSandboxPay(false)}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                <span>Pay &amp; Verify (Sandbox Success)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSandboxPay(true)}
-                className="rounded-lg border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-              >
-                Simulate Failed Payment
-              </button>
+              {gatewayConfig?.mode !== 'LIVE' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSandboxPay(false)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>Pay &amp; Verify (Sandbox Success)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSandboxPay(true)}
+                    className="rounded-lg border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    Simulate Failed Payment
+                  </button>
+                </>
+              ) : null}
             </div>
           )}
         </div>

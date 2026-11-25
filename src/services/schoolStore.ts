@@ -252,6 +252,12 @@ function assertSchoolAdminOwnership(user: UserWithRoles, school: SchoolProfile):
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function toDbUuid(val: string | null | undefined): string | null {
+  return val && UUID_RE.test(val) ? val : null;
+}
+
 export const schoolStore = {
   async searchSchools(filters: SchoolSearchFilters = {}): Promise<SchoolProfile[]> {
     const supabase = getSupabaseClient();
@@ -323,6 +329,25 @@ export const schoolStore = {
     vacancies: SchoolStaffVacancy[];
     gallery: SchoolGalleryItem[];
   } | null> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: school } = await supabase.from('schools').select('*').eq('slug', slug).maybeSingle();
+      if (!school) return null;
+      const [clsRes, facRes, vacRes, galRes] = await Promise.all([
+        supabase.from('school_classes').select('*').eq('school_id', school.id),
+        supabase.from('school_facilities').select('*').eq('school_id', school.id),
+        supabase.from('school_staff_vacancies').select('*').eq('school_id', school.id).eq('status', 'OPEN'),
+        supabase.from('school_gallery').select('*').eq('school_id', school.id).order('sort_order', { ascending: true }),
+      ]);
+      return {
+        school: school as SchoolProfile,
+        classes: (clsRes.data ?? []) as SchoolClass[],
+        facilities: (facRes.data ?? []) as SchoolFacility[],
+        vacancies: (vacRes.data ?? []) as SchoolStaffVacancy[],
+        gallery: (galRes.data ?? []) as SchoolGalleryItem[],
+      };
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.slug === slug);
     if (!school) return null;
@@ -343,6 +368,36 @@ export const schoolStore = {
     vacancies: SchoolStaffVacancy[];
     gallery: SchoolGalleryItem[];
   }> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: school } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('admin_user_id', user.profile.id)
+        .maybeSingle();
+      if (!school) {
+        return { school: null, classes: [], facilities: [], enquiries: [], vacancies: [], gallery: [] };
+      }
+      const [clsRes, facRes, enqRes, vacRes, galRes] = await Promise.all([
+        supabase.from('school_classes').select('*').eq('school_id', school.id),
+        supabase.from('school_facilities').select('*').eq('school_id', school.id),
+        supabase.from('admission_enquiries').select('*').eq('school_id', school.id).order('created_at', { ascending: false }),
+        supabase.from('school_staff_vacancies').select('*').eq('school_id', school.id).order('created_at', { ascending: false }),
+        supabase.from('school_gallery').select('*').eq('school_id', school.id).order('sort_order', { ascending: true }),
+      ]);
+      return {
+        school: school as SchoolProfile,
+        classes: (clsRes.data ?? []) as SchoolClass[],
+        facilities: (facRes.data ?? []) as SchoolFacility[],
+        enquiries: (enqRes.data ?? []).map((e: Record<string, unknown>) => ({
+          ...(e as unknown as AdmissionEnquiry),
+          school_name: (school as SchoolProfile).name,
+        })),
+        vacancies: (vacRes.data ?? []) as SchoolStaffVacancy[],
+        gallery: (galRes.data ?? []) as SchoolGalleryItem[],
+      };
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.admin_user_id === user.profile.id) ?? null;
     if (!school) {
@@ -382,6 +437,88 @@ export const schoolStore = {
       throw new Error('Unauthorized: School Administrator role is required.');
     }
     if (!payload.name.trim()) throw new Error('Institution name is required.');
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const dbLocId = toDbUuid(payload.location_id);
+      const { data: existing } = await supabase
+        .from('schools')
+        .select('*')
+        .eq('admin_user_id', user.profile.id)
+        .maybeSingle();
+      if (existing) {
+        const { data: updated, error } = await supabase
+          .from('schools')
+          .update({
+            institution_type: payload.institution_type,
+            name: payload.name.trim(),
+            board_affiliation: payload.board_affiliation,
+            affiliation_number: payload.affiliation_number || null,
+            medium_of_instruction: payload.medium_of_instruction,
+            established_year: payload.established_year ?? null,
+            location_id: dbLocId,
+            state_name: payload.state_name,
+            city_name: payload.city_name,
+            pincode: payload.pincode || null,
+            contact_email: payload.contact_email,
+            contact_phone: payload.contact_phone,
+            website: payload.website || null,
+            description: payload.description,
+            admissions_open: payload.admissions_open,
+          })
+          .eq('id', existing.id)
+          .select('*')
+          .single();
+        if (error) throw new Error(error.message);
+        return updated as SchoolProfile;
+      }
+
+      const slug = `${payload.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 6)}`;
+      const { data: listing, error: lErr } = await supabase
+        .from('listings')
+        .insert({
+          owner_id: user.profile.id,
+          module_key: 'school',
+          location_id: dbLocId,
+          title: payload.name.trim(),
+          slug,
+          summary: `${payload.institution_type} (${payload.board_affiliation}) — ${payload.city_name}`,
+          description: payload.description,
+          status: 'PENDING_REVIEW',
+        })
+        .select('*')
+        .single();
+      if (lErr) throw new Error(lErr.message);
+
+      const { data: created, error: sErr } = await supabase
+        .from('schools')
+        .insert({
+          listing_id: (listing as { id: string }).id,
+          admin_user_id: user.profile.id,
+          institution_type: payload.institution_type,
+          name: payload.name.trim(),
+          slug,
+          board_affiliation: payload.board_affiliation,
+          affiliation_number: payload.affiliation_number || null,
+          medium_of_instruction: payload.medium_of_instruction,
+          established_year: payload.established_year ?? null,
+          location_id: dbLocId,
+          state_name: payload.state_name,
+          city_name: payload.city_name,
+          pincode: payload.pincode || null,
+          contact_email: payload.contact_email,
+          contact_phone: payload.contact_phone,
+          website: payload.website || null,
+          description: payload.description,
+          admissions_open: payload.admissions_open,
+          subscription_plan_code: 'FREE',
+          status: 'ACTIVE',
+        })
+        .select('*')
+        .single();
+      if (sErr) throw new Error(sErr.message);
+      return created as SchoolProfile;
+    }
 
     const state = readSchoolSandbox();
     const existing = state.schools.find((s) => s.admin_user_id === user.profile.id);
@@ -427,6 +564,17 @@ export const schoolStore = {
     schoolId: string,
     payload: Omit<SchoolClass, 'id' | 'school_id'>
   ): Promise<SchoolClass> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('school_classes')
+        .insert({ school_id: schoolId, ...payload })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as SchoolClass;
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.id === schoolId);
     if (!school) throw new Error('School not found.');
@@ -443,11 +591,27 @@ export const schoolStore = {
     facilityLabel: string,
     description?: string
   ): Promise<SchoolFacility> {
+    const key = facilityLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('school_facilities')
+        .insert({
+          school_id: schoolId,
+          facility_key: key,
+          facility_label: facilityLabel.trim(),
+          description: description?.trim() || null,
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as SchoolFacility;
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.id === schoolId);
     if (!school) throw new Error('School not found.');
     assertSchoolAdminOwnership(user, school);
-    const key = facilityLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_');
     const row: SchoolFacility = {
       id: makeId('fac'),
       school_id: schoolId,
@@ -472,6 +636,26 @@ export const schoolStore = {
       salary_range_label: string;
     }
   ): Promise<SchoolStaffVacancy> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('school_staff_vacancies')
+        .insert({
+          school_id: schoolId,
+          staff_category: payload.staff_category,
+          title: payload.title.trim(),
+          subject_or_department: payload.subject_or_department.trim(),
+          qualification_required: payload.qualification_required.trim(),
+          employment_type: payload.employment_type,
+          salary_range_label: payload.salary_range_label.trim() || null,
+          status: 'OPEN',
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as SchoolStaffVacancy;
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.id === schoolId);
     if (!school) throw new Error('School not found.');
@@ -507,6 +691,34 @@ export const schoolStore = {
     if (!payload.studentName.trim() || !payload.applyingForClass.trim() || !payload.contactPhone.trim()) {
       throw new Error('Student name, class, and contact phone are required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: sch } = await supabase
+        .from('schools')
+        .select('id, name, status')
+        .eq('id', payload.schoolId)
+        .single();
+      if (!sch || sch.status !== 'ACTIVE') {
+        throw new Error('Selected institution is not accepting enquiries.');
+      }
+      const { data: enq, error } = await supabase
+        .from('admission_enquiries')
+        .insert({
+          school_id: sch.id,
+          parent_or_student_id: user.profile.id,
+          student_name: payload.studentName.trim(),
+          applying_for_class: payload.applyingForClass.trim(),
+          academic_year: payload.academicYear || '2027-28',
+          contact_phone: payload.contactPhone.trim(),
+          message: payload.message.trim(),
+          status: 'NEW',
+        })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return { ...(enq as AdmissionEnquiry), school_name: sch.name };
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.id === payload.schoolId);
     if (!school || school.status !== 'ACTIVE') {
@@ -533,6 +745,20 @@ export const schoolStore = {
   },
 
   async getSchoolAdmissionEnquiries(user: UserWithRoles, schoolId: string): Promise<AdmissionEnquiry[]> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('admission_enquiries')
+        .select('*, schools(name)')
+        .eq('school_id', schoolId)
+        .order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((e: Record<string, unknown>) => ({
+        ...(e as unknown as AdmissionEnquiry),
+        school_name: ((e.schools as { name?: string } | null)?.name) ?? 'School',
+      }));
+    }
+
     const state = readSchoolSandbox();
     const school = state.schools.find((s) => s.id === schoolId);
     if (!school) throw new Error('School not found.');
@@ -546,6 +772,20 @@ export const schoolStore = {
     status: AdmissionEnquiryStatus,
     reply?: string
   ): Promise<AdmissionEnquiry> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const patch: Record<string, unknown> = { status };
+      if (reply !== undefined) patch.school_reply = reply.trim();
+      const { data, error } = await supabase
+        .from('admission_enquiries')
+        .update(patch)
+        .eq('id', enquiryId)
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return { ...(data as AdmissionEnquiry), school_name: 'School' };
+    }
+
     const state = readSchoolSandbox();
     const enq = state.enquiries.find((e) => e.id === enquiryId);
     if (!enq) throw new Error('Admission enquiry not found.');

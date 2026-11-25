@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid session' }), { status: 401, headers: corsHeaders });
     }
 
-    const { planCode, billingCycle, couponCode, idempotencyKey, consentConfirmed } = await req.json();
+    const { planCode, billingCycle, customerStateCode = 'UP', couponCode, idempotencyKey, consentConfirmed } = await req.json();
     if (!consentConfirmed) {
       return new Response(JSON.stringify({ error: 'Customer payment consent is required.' }), { status: 400, headers: corsHeaders });
     }
@@ -98,6 +98,8 @@ Deno.serve(async (req) => {
       .insert({
         user_id: userData.user.id,
         purpose: 'SUBSCRIPTION',
+        payment_method: 'RAZORPAY_CHECKOUT',
+        upi_verification_status: 'NONE',
         razorpay_order_id: rzpOrder.id,
         idempotency_key: idempotencyKey,
         base_amount_inr: baseAmount,
@@ -106,7 +108,11 @@ Deno.serve(async (req) => {
         total_amount_inr: totalAmount,
         status: 'CREATED',
         consent_confirmed: true,
-        metadata: { planCode, billingCycle },
+        metadata: {
+          plan_code: planCode,
+          billing_cycle: billingCycle,
+          customer_state_code: customerStateCode || 'UP',
+        },
       })
       .select('*')
       .single();

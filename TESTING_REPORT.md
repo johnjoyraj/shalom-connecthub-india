@@ -10,9 +10,9 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 7.66s; largest chunk `290.81 kB` (0 chunk warnings) |
-| Unit, RLS & Security Tests | `npm.cmd test` (`vitest run`) | **PASS (46/46)** | 12 test files passed in 23.66s |
-| Browser E2E & Mobile | `npm.cmd run test:e2e` (`playwright test`) | **PASS (3/3)** | Headless Chrome against `vite preview` in 23.1s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 7.69s; largest chunk `290.81 kB` (0 chunk warnings) |
+| Unit, RLS & Security Tests | `npm.cmd test` (`vitest run`) | **PASS (46/46)** | 12 test files passed in 24.22s |
+| Browser E2E & Mobile | `npm.cmd run test:e2e` (`playwright test`) | **PASS (3/3)** | Headless Chrome against `vite preview` in 23.9s |
 
 ---
 
@@ -81,7 +81,7 @@
 ---
 
 ## 3. Live Supabase (`fkjiafpcbgqtnkdonrtb`) Verification (2026-11-25)
-- All 11 SQL migrations (`202611250001`–`202611250011`) applied cleanly (`63` tables in `public`).
+- All 12 SQL migrations (`202611250001`–`202611250012`) applied cleanly (`63` tables in `public`).
 - Live REST verification with public `anon` key confirmed:
   - `locations?level=eq.STATE`: **36** Indian States & UTs returned.
   - `plans`: **5** configurable subscription tiers returned.

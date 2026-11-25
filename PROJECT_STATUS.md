@@ -1,8 +1,8 @@
 # PROJECT STATUS — SHALOM CONNECTHUB INDIA
 
 **Last Updated**: 2026-11-25  
-**Current Phase**: Phase 10+ — Live Supabase Cutover, UPI (`7379325499@ybl`) & Razorpay Gateway Config  
-**Overall Status**: `COMPLETED` (All 11 SQL Migrations Applied & RLS Verified on `fkjiafpcbgqtnkdonrtb`; `.env.local` Wired; 46 Vitest + 3 Playwright E2E Passed)
+**Current Phase**: Phase 10+ — Full Live Supabase Store & Edge Function Wiring  
+**Overall Status**: `COMPLETED` (All 12 SQL Migrations Ready/Applied on `fkjiafpcbgqtnkdonrtb`; All 7 Domain/Finance/Comm/AI Stores Wired to Live Supabase; 46 Vitest + 3 Playwright E2E Passed)
 
 ---
 
@@ -44,6 +44,6 @@
   - All 15+ sibling folders in `e:\MYWORKSPACE` untouched.
   - All Phases 1–9 application code, migrations, and Edge Functions preserved and regression-tested.
 - **Outstanding User Actions for Live Production Cutover**:
-  1. *(Done)* `.env.local` wired with public `anon` key for `fkjiafpcbgqtnkdonrtb` and all 11 SQL migrations (`202611250001`–`202611250011`) applied & verified live (`36` States/UTs, `5` plans, `3` enabled categories, `payment_gateway_config` with `7379325499@ybl`, and RLS blocking anonymous reads on private tables).
+  1. *(Done)* `.env.local` wired with public `anon` key for `fkjiafpcbgqtnkdonrtb`, all 12 SQL migrations (`202611250001`–`202611250012`) applied & verified live (`36` States/UTs, `5` plans, `3` enabled categories, `payment_gateway_config` with `7379325499@ybl`, and live store/Edge Function wiring in `src/services/`), with RLS blocking anonymous reads on private tables.
   2. Deploy the 5 Deno Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`, `automation-worker`, `ai-gateway`) via Supabase CLI and configure server-side secrets (`RAZORPAY_*`, `WHATSAPP_*`, `GEMINI_API_KEY`) per `DEPLOYMENT_GUIDE.md`.
   3. Register your primary admin account in the app and assign `super_admin` in SQL Editor.

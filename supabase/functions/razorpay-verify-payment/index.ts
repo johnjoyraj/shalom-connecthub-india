@@ -62,7 +62,85 @@ Deno.serve(async (req) => {
       .select('*')
       .single();
 
-    return new Response(JSON.stringify({ status: 'verified', payment: updated }), { status: 200, headers: corsHeaders });
+    // Activate subscription server-side if payment is for SUBSCRIPTION
+    let subscription = null;
+    const meta = (payment.metadata ?? {}) as Record<string, string>;
+    const planCode = meta.plan_code ?? meta.planCode;
+    const billingCycle = meta.billing_cycle ?? meta.billingCycle ?? 'MONTHLY';
+    if (payment.purpose === 'SUBSCRIPTION' && planCode) {
+      const { data: plan } = await adminClient.from('plans').select('*').eq('code', planCode).maybeSingle();
+      if (plan) {
+        await adminClient
+          .from('subscriptions')
+          .update({ status: 'EXPIRED' })
+          .eq('user_id', payment.user_id)
+          .eq('status', 'ACTIVE');
+        const startsAt = new Date();
+        const days = billingCycle === 'ANNUAL' ? 365 : 30;
+        const expiresAt = new Date(startsAt.getTime() + days * 86400000);
+        const { data: sub } = await adminClient
+          .from('subscriptions')
+          .insert({
+            user_id: payment.user_id,
+            plan_id: plan.id,
+            billing_cycle: billingCycle,
+            status: 'ACTIVE',
+            starts_at: startsAt.toISOString(),
+            expires_at: expiresAt.toISOString(),
+            auto_renew_authorized: false,
+            last_reminder_stage: 'NONE',
+          })
+          .select('*')
+          .single();
+        subscription = sub;
+        if (sub) {
+          await adminClient.from('payments').update({ subscription_id: sub.id }).eq('id', payment.id);
+        }
+      }
+    }
+
+    // Issue GST invoice server-side if paid > 0
+    let invoice = null;
+    if (Number(payment.total_amount_inr) > 0) {
+      const { data: profile } = await adminClient
+        .from('profiles')
+        .select('full_name')
+        .eq('id', payment.user_id)
+        .maybeSingle();
+      const customerState = String(meta.customer_state_code || 'UP').toUpperCase();
+      const taxable = Math.max(0, Number(payment.base_amount_inr) - Number(payment.discount_amount_inr));
+      const intra = customerState === 'UP';
+      const gstTotal = Number((taxable * 0.18).toFixed(2));
+      const cgst = intra ? Number((gstTotal / 2).toFixed(2)) : 0;
+      const sgst = intra ? Number((gstTotal - cgst).toFixed(2)) : 0;
+      const igst = intra ? 0 : gstTotal;
+      const { data: inv } = await adminClient
+        .from('invoices')
+        .insert({
+          invoice_number: `SCHI-2026-${Date.now().toString().slice(-6)}`,
+          payment_id: payment.id,
+          user_id: payment.user_id,
+          customer_name: profile?.full_name || 'Customer',
+          customer_state_code: customerState,
+          supplier_state_code: 'UP',
+          tax_type: intra ? 'INTRA_STATE' : 'INTER_STATE',
+          taxable_amount_inr: taxable,
+          cgst_inr: cgst,
+          sgst_inr: sgst,
+          igst_inr: igst,
+          total_amount_inr: Number(payment.total_amount_inr),
+          amount_in_words: `Rupees ${Math.round(Number(payment.total_amount_inr))} Only`,
+          status: 'ISSUED',
+        })
+        .select('*')
+        .maybeSingle();
+      invoice = inv;
+    }
+
+    return new Response(
+      JSON.stringify({ status: 'verified', payment: updated, subscription, invoice }),
+      { status: 200, headers: corsHeaders }
+    );
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }

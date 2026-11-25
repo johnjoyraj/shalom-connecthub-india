@@ -124,3 +124,11 @@
 
 - Upserts `platform_settings` key `payment_gateway_config` (`is_public = true`) with configurable `upi_vpa` (`"7379325499@ybl"`), `payee_name` (`"SHALOM CONNECTHUB INDIA"`), `razorpay_enabled: true`, `upi_qr_enabled: true`, and `mode: "SANDBOX"`.
 - Alters `public.payments` with `payment_method` (`RAZORPAY_CHECKOUT` / `UPI_INTENT_QR`), `upi_vpa`, `upi_utr_reference`, `upi_verification_status` (`NONE`, `PENDING_VERIFICATION`, `VERIFIED`, `REJECTED`), and unique partial index `idx_payments_upi_utr_unique` on non-null `upi_utr_reference` to prevent UTR replay.
+
+---
+
+## Live Production Finance & Notification RLS Policies (`202611250012_live_finance_rls_and_rpcs.sql`)
+
+- Grants `admin_finance` management on `platform_settings` (`key = 'payment_gateway_config'`).
+- Adds trigger `trg_payments_protect_user_fields` (`enforce_payment_user_update_guard()`) preventing non-admin clients from altering payment amounts, order IDs, signature flags, or self-marking `SUCCEEDED`/`VERIFIED`.
+- Adds RLS policies for authenticated `CREATED` payment insertion, `PENDING_VERIFICATION` UTR submission, `admin_finance` `payments`/`invoices`/`subscription_events` management, and counterparty-scoped `notifications` inserts.

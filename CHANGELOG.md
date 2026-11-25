@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [1.1.0] - 2026-11-25 (Full Live Supabase & Edge Function Store Integration)
+### Added & Updated
+- **Live Store Wiring**: Wired `financeStore.ts`, `propertyStore.ts`, `schoolStore.ts`, `communicationStore.ts`, and `aiService.ts` to live Supabase PostgreSQL tables and Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `automation-worker`, `ai-gateway`), preserving local sandbox fallback when Supabase env vars are absent.
+- **Razorpay Edge Functions**: Updated `razorpay-create-order` and `razorpay-verify-payment` to store GST metadata, atomically activate subscriptions, and issue GST invoices server-side.
+- **Live RLS Migration**: Added `supabase/migrations/202611250012_live_finance_rls_and_rpcs.sql` with `enforce_payment_user_update_guard()` trigger and policies for live UPI UTR submission, Finance Admin approvals/invoices, and counterparty notifications.
+
 ## [1.0.1] - 2026-11-25 (UPI QR/Intent `7379325499@ybl` & Razorpay Checkout Configuration)
 ### Added & Verified
 - **Database Migration**: Added and executed `supabase/migrations/202611250011_razorpay_upi_config.sql` seeding `platform_settings` (`payment_gateway_config` with `upi_vpa: "7379325499@ybl"`, `payee_name: "SHALOM CONNECTHUB INDIA"`) and extending `public.payments` with `payment_method`, `upi_vpa`, `upi_utr_reference`, `upi_verification_status`, and `idx_payments_upi_utr_unique`.

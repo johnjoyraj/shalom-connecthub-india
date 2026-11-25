@@ -1,4 +1,5 @@
 import { BRAND_INFO } from '../data/platformDefaults';
+import { getSupabaseClient } from '../lib/supabase';
 import type {
   AiFeatureKey,
   AiModerationFlag,
@@ -174,8 +175,62 @@ function checkAndLogUsage(
   });
 }
 
+async function invokeLiveAiGateway(
+  featureKey: AiFeatureKey,
+  prompt: string
+): Promise<{ text: string } | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+
+  const { data: settingsRow } = await supabase
+    .from('ai_settings')
+    .select('*')
+    .eq('config_key', 'default')
+    .maybeSingle();
+  if (settingsRow) {
+    const s = settingsRow as unknown as AiSettings;
+    if (!s.is_enabled) {
+      throw new Error('AI features are currently disabled by Platform Administration.');
+    }
+    if (!s.enabled_features?.[featureKey]) {
+      throw new Error(`AI feature "${featureKey}" is currently disabled.`);
+    }
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('ai-gateway', {
+      body: { featureKey, prompt },
+    });
+    if (error) {
+      const msg = error.message || '';
+      if (/disabled|cap reached|unauthorized|429|403/i.test(msg)) {
+        throw new Error(msg);
+      }
+      return null;
+    }
+    if (data && typeof (data as { text?: unknown }).text === 'string') {
+      return { text: (data as { text: string }).text };
+    }
+    return null;
+  } catch (err) {
+    if (err instanceof Error && /disabled|cap reached|unauthorized/i.test(err.message)) {
+      throw err;
+    }
+    return null;
+  }
+}
+
 export const aiService = {
   async getSettings(): Promise<AiSettings> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from('ai_settings')
+        .select('*')
+        .eq('config_key', 'default')
+        .maybeSingle();
+      if (data) return data as AiSettings;
+    }
     return { ...readAiSandbox().settings };
   },
 
@@ -183,6 +238,32 @@ export const aiService = {
     if (!hasAdminScope(actor.roles, 'system')) {
       throw new Error('Unauthorized: System Admin permission required to configure AI settings.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const current = await this.getSettings();
+      const next: AiSettings = {
+        ...current,
+        ...updates,
+        enabled_features: {
+          ...current.enabled_features,
+          ...(updates.enabled_features ?? {}),
+        },
+      };
+      const { data, error } = await supabase
+        .from('ai_settings')
+        .upsert({
+          config_key: 'default',
+          is_enabled: next.is_enabled,
+          monthly_budget_cap_inr: next.monthly_budget_cap_inr,
+          per_user_daily_limit: next.per_user_daily_limit,
+          enabled_features: next.enabled_features,
+        }, { onConflict: 'config_key' })
+        .select('*')
+        .single();
+      if (error) throw new Error(error.message);
+      return data as AiSettings;
+    }
+
     const state = readAiSandbox();
     state.settings = {
       ...state.settings,
@@ -207,11 +288,27 @@ export const aiService = {
     disclaimer: string;
   }> {
     if (!input.rawNotes.trim()) throw new Error('Enter basic listing notes first.');
+    const clean = input.rawNotes.trim();
+    const gw = await invokeLiveAiGateway(
+      'listing_assistant',
+      `Create a clear, professional ${input.module} marketplace listing for India based on these notes:\n${clean}`
+    );
+    if (gw) {
+      const lines = gw.text.split(/\r?\n/).filter((l) => l.trim());
+      return {
+        suggestedTitle: (lines[0] || `${input.module.toUpperCase()} Listing`).slice(0, 80),
+        suggestedSummary: (lines[1] || clean.slice(0, 120)).slice(0, 180),
+        suggestedDescription: gw.text,
+        requiresHumanReview: true,
+        disclaimer:
+          'AI-generated text must be reviewed by you before publishing. AI does not verify legal property titles, statutory approvals, or qualifications.',
+      };
+    }
+
     const state = readAiSandbox();
     checkAndLogUsage(state, user.profile.id, 'listing_assistant', 320, 0.05);
     writeAiSandbox(state);
 
-    const clean = input.rawNotes.trim();
     const prefix =
       input.module === 'staff'
         ? 'Hiring Opportunity'
@@ -235,10 +332,54 @@ export const aiService = {
   ): Promise<AiTranslationRecord> {
     const original = input.text.trim();
     if (!original) throw new Error('Text to translate cannot be empty.');
+
+    const detected = detectIndianLanguage(original);
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const gw = await invokeLiveAiGateway(
+        'translation',
+        `Translate the following text into English (en), Hindi (hi), and Malayalam (ml). Reply ONLY with JSON {"en":"...","hi":"...","ml":"..."}:\n${original}`
+      );
+      let translations = {
+        en: detected === 'en' ? original : `[EN] ${original}`,
+        hi: detected === 'hi' ? original : `[हिन्दी अनुवाद] ${original}`,
+        ml: detected === 'ml' ? original : `[മലയാളം വിവർത്തനം] ${original}`,
+      };
+      if (gw) {
+        try {
+          const jsonMatch = gw.text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]) as Partial<typeof translations>;
+            translations = {
+              en: parsed.en || translations.en,
+              hi: parsed.hi || translations.hi,
+              ml: parsed.ml || translations.ml,
+            };
+          }
+        } catch {
+          // keep clean fallback
+        }
+      }
+      const { data: saved } = await supabase
+        .from('ai_translations')
+        .upsert(
+          {
+            entity_type: input.entityType,
+            entity_id: input.entityId,
+            original_language: detected,
+            original_text: original,
+            translations,
+          },
+          { onConflict: 'entity_type,entity_id' }
+        )
+        .select('*')
+        .maybeSingle();
+      if (saved) return saved as AiTranslationRecord;
+    }
+
     const state = readAiSandbox();
     checkAndLogUsage(state, user.profile.id, 'translation', 280, 0.04);
 
-    const detected = detectIndianLanguage(original);
     const record: AiTranslationRecord = {
       id: makeId('aitr'),
       entity_type: input.entityType,
@@ -397,14 +538,21 @@ export const aiService = {
   },
 
   async askPlatformAssistant(user: UserWithRoles, question: string): Promise<string> {
-    const q = question.trim().toLowerCase();
+    const rawQ = question.trim();
+    const q = rawQ.toLowerCase();
     if (!q) throw new Error('Please enter a question.');
+
+    const gw = await invokeLiveAiGateway('customer_assistant', rawQ);
+    if (gw) {
+      return gw.text;
+    }
+
     const state = readAiSandbox();
     checkAndLogUsage(state, user.profile.id, 'customer_assistant', 200, 0.03);
     writeAiSandbox(state);
 
     if (q.includes('price') || q.includes('plan') || q.includes('subscription')) {
-      return `SHALOM CONNECTHUB INDIA offers configurable plans starting with Free (₹0/mo for 1 active listing), Starter (₹199/mo), Professional (₹499/mo), Business (₹999/mo), and Premium (₹1,999/mo), processed securely via Razorpay with GST invoices.`;
+      return `SHALOM CONNECTHUB INDIA offers configurable plans starting with Free (₹0/mo for 1 active listing), Starter (₹199/mo), Professional (₹499/mo), Business (₹999/mo), and Premium (₹1,999/mo), processed securely via Razorpay & UPI with GST invoices.`;
     }
     if (q.includes('title') || q.includes('legal') || q.includes('verify')) {
       return `Uploaded property documents are reviewed for submission completeness only and NEVER constitute legal property title verification. Always perform independent legal due diligence.`;
@@ -425,6 +573,28 @@ export const aiService = {
     if (!hasAdminScope(actor.roles, 'system') && !hasAdminScope(actor.roles, 'moderation')) {
       throw new Error('Unauthorized: Admin access required.');
     }
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const [settings, logsRes, flagsRes, transRes] = await Promise.all([
+        this.getSettings(),
+        supabase.from('ai_usage_logs').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('ai_moderation_flags').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('ai_translations').select('*').order('created_at', { ascending: false }).limit(50),
+      ]);
+      const usageLogs = (logsRes.data ?? []) as AiUsageLog[];
+      const monthPrefix = nowIso().slice(0, 7);
+      const monthlySpentInr = usageLogs
+        .filter((l) => l.status === 'SUCCESS' && l.created_at.startsWith(monthPrefix))
+        .reduce((acc, l) => acc + Number(l.estimated_cost_inr || 0), 0);
+      return {
+        settings,
+        usageLogs,
+        moderationFlags: (flagsRes.data ?? []) as AiModerationFlag[],
+        translations: (transRes.data ?? []) as AiTranslationRecord[],
+        monthlySpentInr: Math.round(monthlySpentInr * 10000) / 10000,
+      };
+    }
+
     const state = readAiSandbox();
     const monthPrefix = nowIso().slice(0, 7);
     const monthlySpentInr = state.usageLogs
