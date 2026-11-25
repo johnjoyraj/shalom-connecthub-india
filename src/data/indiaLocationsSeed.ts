@@ -42,6 +42,7 @@ const STATE_TUPLES: ReadonlyArray<[string, string, string]> = [
 ];
 
 const DISTRICT_TUPLES: ReadonlyArray<[string, string, string, string, number, number]> = [
+  ['loc-state-up', 'Deoria District', 'in-up-deoria-dist', 'UP', 26.5024, 83.7791],
   ['loc-state-up', 'Gorakhpur District', 'in-up-gorakhpur-dist', 'UP', 26.7606, 83.3732],
   ['loc-state-up', 'Lucknow District', 'in-up-lucknow-dist', 'UP', 26.8467, 80.9462],
   ['loc-state-kl', 'Ernakulam District', 'in-kl-ernakulam-dist', 'KL', 9.9816, 76.2999],
@@ -59,6 +60,8 @@ const DISTRICT_TUPLES: ReadonlyArray<[string, string, string, string, number, nu
 ];
 
 const CITY_TUPLES: ReadonlyArray<[string, string, string, string, string, number, number]> = [
+  ['loc-dist-in-up-deoria-dist', 'Deoria', 'in-up-deoria', 'UP', '274001', 26.5024, 83.7791],
+  ['loc-dist-in-up-deoria-dist', 'Bhatni (Deoria)', 'in-up-bhatni-deoria', 'UP', '274701', 26.3919, 83.9385],
   ['loc-dist-in-up-gorakhpur-dist', 'Gorakhpur', 'in-up-gorakhpur', 'UP', '273001', 26.7606, 83.3732],
   ['loc-dist-in-up-lucknow-dist', 'Lucknow', 'in-up-lucknow', 'UP', '226001', 26.8467, 80.9462],
   ['loc-dist-in-kl-ernakulam-dist', 'Kochi', 'in-kl-kochi', 'KL', '682001', 9.9312, 76.2673],
