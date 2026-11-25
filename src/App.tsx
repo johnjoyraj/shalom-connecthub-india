@@ -11,6 +11,9 @@ import {
   VerifyOtpPage,
 } from './pages/auth/AuthPages';
 import { UserDashboardPage } from './pages/dashboard/UserDashboardPage';
+import { OwnerDashboardPage } from './pages/property/OwnerDashboardPage';
+import { PropertiesDirectoryPage } from './pages/property/PropertiesDirectoryPage';
+import { PropertyDetailPage } from './pages/property/PropertyDetailPage';
 import { HomePage } from './pages/public/HomePage';
 import { PricingPage } from './pages/public/PricingPage';
 import {
@@ -37,50 +40,10 @@ export function AppRoutes() {
         <Route path="/staff" element={<StaffHubPage />} />
         <Route path="/jobs" element={<JobsDirectoryPage />} />
         <Route path="/candidates" element={<CandidatesDirectoryPage />} />
-        <Route
-          path="/properties"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Property Connect — Homes, Commercial & Land"
-              phaseNumber={3}
-              summary="Rent, buy, sell, or lease residential homes, flats, shops, offices, hostels/PGs, plots, and agricultural land."
-              highlights={['Dynamic forms by property type', 'Address privacy controls', 'Owner & authorised agent portals', 'Visit requests & reporting']}
-            />
-          }
-        />
-        <Route
-          path="/rentals"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Property Rentals & PG / Hostels"
-              phaseNumber={3}
-              summary="Search rental houses, apartments, hostels, PG accommodation, and commercial leases across India."
-              highlights={['Rent & deposit filters', 'Bedrooms & amenities', 'Direct visit scheduling', 'Verified owner listings']}
-            />
-          }
-        />
-        <Route
-          path="/property-sales"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Property Resale & New Sales"
-              phaseNumber={3}
-              summary="Explore residential apartments, independent houses, shops, and office spaces for sale."
-              highlights={['Price & area filters', 'RERA & disclaimer clarity', 'Buyer enquiry tracking', 'Featured listings']}
-            />
-          }
-        />
-        <Route
-          path="/land-plots"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Residential Plots & Agricultural Land"
-              phaseNumber={3}
-              summary="Discover residential plots, commercial land, and agricultural land leases/sales across India."
-              highlights={['Area & measurement units', 'District & PIN search', 'Supporting document review', 'No false legal title claims']}
-            />
-          }
-        />
+        <Route path="/properties" element={<PropertiesDirectoryPage preset="ALL" />} />
+        <Route path="/rentals" element={<PropertiesDirectoryPage preset="RENTALS" />} />
+        <Route path="/property-sales" element={<PropertiesDirectoryPage preset="SALES" />} />
+        <Route path="/land-plots" element={<PropertiesDirectoryPage preset="LAND" />} />
         <Route
           path="/schools"
           element={
@@ -93,7 +56,7 @@ export function AppRoutes() {
           }
         />
         <Route path="/schools/:slug" element={<ListingDetailShellPage />} />
-        <Route path="/listing/:slug" element={<ListingDetailShellPage />} />
+        <Route path="/listing/:slug" element={<PropertyDetailPage />} />
         <Route
           path="/providers"
           element={
@@ -161,8 +124,12 @@ export function AppRoutes() {
         <Route path="/employer/shortlist" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="shortlist" /></ProtectedRoute>} />
         <Route path="/employer/subscription" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="subscription" /></ProtectedRoute>} />
 
-        {/* Role Portal Shells (Phases 3-4) */}
-        <Route path="/owner/*" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><UserDashboardPage section="property-owner-portal" /></ProtectedRoute>} />
+        {/* Property Owner & Authorised Agent Routes (Phase 3) */}
+        <Route path="/owner" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="overview" /></ProtectedRoute>} />
+        <Route path="/owner/properties" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="properties" /></ProtectedRoute>} />
+        <Route path="/owner/enquiries" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="enquiries" /></ProtectedRoute>} />
+        <Route path="/owner/documents" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="documents" /></ProtectedRoute>} />
+        <Route path="/owner/subscription" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="subscription" /></ProtectedRoute>} />
         <Route path="/school-dashboard/*" element={<ProtectedRoute requiredRoles={['school_admin']}><UserDashboardPage section="school-portal" /></ProtectedRoute>} />
 
         {/* Admin Routes */}

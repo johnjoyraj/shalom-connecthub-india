@@ -1,5 +1,12 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.3.0] - 2026-11-25 (Phase 3 — Module B: Property Connect)
+### Added
+- **Database Migration**: Added `supabase/migrations/202611250005_phase3_property_connect.sql` with 7 RLS-enabled tables (`properties`, `property_details`, `property_pricing`, `property_locations`, `property_features`, `property_documents`, `property_enquiries`) enforcing owner/assigned-agent isolation and non-legal-title document disclaimers.
+- **Dynamic Form & Privacy Engine**: Implemented `propertyFormRules.ts` and `propertyStore.ts` with address privacy masking (`PUBLIC`, `CITY_LOCALITY_ONLY`, `ON_APPROVED_VISIT`), expiry handling, and moderation reporting.
+- **Public & Owner/Agent Portals**: Implemented `/properties`, `/rentals`, `/property-sales`, `/land-plots` (`PropertiesDirectoryPage`), `/listing/:slug` (`PropertyDetailPage` with Buyer/Tenant/Visit enquiries & Report Property), and `/owner/*` (`OwnerDashboardPage`).
+- **Automated Tests**: Added `src/test/propertyConnect.test.ts` (22/22 total tests passing).
+
 ## [0.2.0] - 2026-11-25 (Phase 2 — Module A: Staff Connect)
 ### Added
 - **Database Migration**: Added `supabase/migrations/202611250004_phase2_staff_connect.sql` with 9 RLS-enabled tables (`candidate_profiles`, `candidate_educations`, `candidate_experiences`, `candidate_documents`, `job_posts`, `job_requirements`, `job_applications`, `application_events`, `recruitment_enquiries`).

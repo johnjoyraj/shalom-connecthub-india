@@ -46,3 +46,17 @@
 | `job_applications` | Candidate job applications with unique `(job_post_id, applicant_user_id)` constraint |
 | `application_events` | Status change audit timeline (`APPLIED` → `SHORTLISTED` → `HIRED` / `WITHDRAWN`) |
 | `recruitment_enquiries` | Direct candidate-employer recruitment enquiries and replies |
+
+---
+
+## Phase 3 — Module B: Property Connect Tables (`202611250005_phase3_property_connect.sql`, 7 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `properties` | Property base linked to `listings` (`RENTAL_HOUSE`, `APARTMENT_FLAT`, `INDEPENDENT_HOUSE`, `COMMERCIAL_SHOP`, `OFFICE_SPACE`, `HOSTEL_PG`, `RESIDENTIAL_PLOT`, `AGRICULTURAL_LAND`), purpose, agent assignment, expiry |
+| `property_details` | Area + measurement unit, bedrooms/bathrooms, furnishing, PG sharing/meals/gender fields |
+| `property_pricing` | Sale price, monthly rent, security deposit, maintenance, lease duration, negotiable flag |
+| `property_locations` | State/District/City/PIN/Locality + `full_address` with privacy level (`PUBLIC`, `CITY_LOCALITY_ONLY`, `ON_APPROVED_VISIT`) |
+| `property_features` | Property amenities |
+| `property_documents` | Private supporting documents with mandatory non-legal-title verification disclaimer (owner + assigned agent + admin only) |
+| `property_enquiries` | Buyer, tenant, and visit requests (`NEW` → `VISIT_CONFIRMED` → `COMPLETED` / `CLOSED`) |

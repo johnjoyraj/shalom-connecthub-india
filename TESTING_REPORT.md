@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 2 — Module A: Staff Connect (plus Phase 1 Core Regression)
+**Phase Tested**: Phase 3 — Module B: Property Connect (plus Phase 1 & 2 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.86s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (17/17)** | 5 test files passed in 8.95s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 7.84s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (22/22)** | 6 test files passed in 10.88s |
 
 ---
 
-## 2. Test File Breakdown (17 Tests Passed)
+## 2. Test File Breakdown (22 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -38,6 +38,11 @@
    - Employer role guard blocks unauthorized job posting; candidate CV upload + application + duplicate-application blocking work end-to-end.
    - Private CV isolation prevents unrelated employers from accessing candidate CV documents while authorizing the hiring employer.
    - Recruitment enquiries & employer replies work end-to-end, and all 9 Phase 2 tables enforce `ENABLE ROW LEVEL SECURITY`.
+6. `src/test/propertyConnect.test.ts` **(5/5 passed)**:
+   - Dynamic form rules adapt bedrooms, PG fields, area units, and rent/sale/lease pricing by property type & purpose.
+   - Address privacy masks full street addresses for public viewers while revealing them to authorised owners/agents.
+   - Owner & assigned authorised-agent isolation blocks unassigned agents from viewing documents or altering properties, and enforces the non-legal-title disclaimer.
+   - Visit requests, owner confirmation replies, and moderation reporting work end-to-end, and all 7 Phase 3 tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 
