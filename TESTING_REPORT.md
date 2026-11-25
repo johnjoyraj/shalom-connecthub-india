@@ -79,5 +79,10 @@
 
 ---
 
-## 3. Live Cloud Verification Pending
-- Live execution of `202611250001`–`202611250003` against Supabase project `fkjiafpcbgqtnkdonrtb` and live browser E2E against `VITE_SUPABASE_ANON_KEY` remain pending until the anon key is placed in `.env.local` and migrations are pushed.
+## 3. Live Supabase (`fkjiafpcbgqtnkdonrtb`) Verification (2026-11-25)
+- All 10 SQL migrations (`202611250001`–`202611250010`) applied cleanly (`63` tables in `public`).
+- Live REST verification with public `anon` key confirmed:
+  - `locations?level=eq.STATE`: **36** Indian States & UTs returned.
+  - `plans`: **5** configurable subscription tiers returned.
+  - `categories`: **3** active initial module categories returned.
+  - `profiles`, `payments`, `candidate_documents`, `audit_logs`: **`[]` (empty)** for anonymous caller (RLS isolation verified live).

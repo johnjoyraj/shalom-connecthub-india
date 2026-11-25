@@ -1,8 +1,8 @@
 # PROJECT STATUS — SHALOM CONNECTHUB INDIA
 
 **Last Updated**: 2026-11-25  
-**Current Phase**: Phase 10 — Production Deployment & Final Documentation  
-**Overall Status**: `NEEDS REVIEW` (All Phases 0–10 codebase, SQL migrations, Edge Functions, CI, docs & 48 automated tests complete; awaiting live Supabase `VITE_SUPABASE_ANON_KEY`, Edge Secrets, and migration push to `fkjiafpcbgqtnkdonrtb`)
+**Current Phase**: Phase 10 — Live Supabase Cutover & Final Documentation  
+**Overall Status**: `COMPLETED` (All 10 SQL Migrations Applied & RLS Verified on `fkjiafpcbgqtnkdonrtb`; `.env.local` Wired; 45 Vitest + 3 Playwright E2E Passed)
 
 ---
 
@@ -44,6 +44,6 @@
   - All 15+ sibling folders in `e:\MYWORKSPACE` untouched.
   - All Phases 1–9 application code, migrations, and Edge Functions preserved and regression-tested.
 - **Outstanding User Actions for Live Production Cutover**:
-  1. Paste `VITE_SUPABASE_ANON_KEY` into `.env.local` for project `fkjiafpcbgqtnkdonrtb`.
-  2. Push SQL migrations `202611250001`–`202611250009` and deploy the 5 Edge Functions per `DEPLOYMENT_GUIDE.md`.
-  3. Configure Razorpay, WhatsApp Business Cloud API, and Gemini Edge Function secrets via `npx.cmd supabase secrets set`.
+  1. *(Done)* `.env.local` wired with public `anon` key for `fkjiafpcbgqtnkdonrtb` and all 10 SQL migrations (`202611250001`–`202611250010`) applied & verified live (`36` States/UTs, `5` plans, `3` enabled categories, and RLS blocking anonymous reads on private tables).
+  2. Deploy the 5 Deno Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`, `automation-worker`, `ai-gateway`) via Supabase CLI and configure server-side secrets (`RAZORPAY_*`, `WHATSAPP_*`, `GEMINI_API_KEY`) per `DEPLOYMENT_GUIDE.md`.
+  3. Register your primary admin account in the app and assign `super_admin` in SQL Editor.
