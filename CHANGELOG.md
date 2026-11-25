@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.7.0] - 2026-11-25 (Phase 7 — Independent AI Automation Module)
+### Added
+- **Database & Edge Gateway**: Added `supabase/migrations/202611250009_phase7_ai_module.sql` (4 RLS-enabled AI governance tables) and `supabase/functions/ai-gateway/index.ts` (server-side Gemini API proxy with `GEMINI_API_KEY` isolation, monthly spend cap, and safety guardrails).
+- **AI Services & UI**: Implemented `ai.ts`, `aiService.ts`, `/dashboard/ai` (`AiWorkspacePage`), and `/admin/ai` (`AdminAiControlPage`) supporting listing assistant, EN/HI/ML language detection & translation preserving original text, candidate/property matching, moderation flagging, and customer assistant.
+- **Automated Tests**: Added `src/test/aiModule.test.ts` (39/39 total tests passing).
+
 ## [0.6.0] - 2026-11-25 (Phase 6 — Enquiries, Messaging & Notification Automation)
 ### Added
 - **Database & Edge Worker**: Added `supabase/migrations/202611250008_phase6_enquiries_and_automation.sql` (8 RLS-enabled tables) and `supabase/functions/automation-worker/index.ts` (Meta Graph API v21.0 Official WhatsApp Cloud API + retry queue).

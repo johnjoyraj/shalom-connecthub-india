@@ -106,3 +106,14 @@
 | `notification_logs` | Delivery audit log (`SENT`, `FAILED`, `SKIPPED_NO_CONSENT`, `SKIPPED_RATE_LIMIT`) & INR cost estimates |
 | `automation_jobs` | Scheduled job queue with retry attempts, backoff & failure error logging |
 | `webhook_events` | Idempotent inbound webhook log (`RAZORPAY`, `WHATSAPP`, `EMAIL`) |
+
+---
+
+## Phase 7 — Independent AI Automation Tables (`202611250009_phase7_ai_module.sql`, 4 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `ai_settings` | Admin-configurable AI master switch, monthly INR budget cap, per-user daily limits, feature toggles |
+| `ai_translations` | Preserves `original_language` and `original_text` separately from `en`/`hi`/`ml` translations |
+| `ai_usage_logs` | Token & INR spend telemetry (`SUCCESS`, `BLOCKED_CAP`, `BLOCKED_DISABLED`, `ERROR`) |
+| `ai_moderation_flags` | AI-flagged duplicate, fraud, or incomplete listings requiring human moderator review |

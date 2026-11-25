@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 6 — Common Enquiry, Messaging & Notification Automation (plus Phases 1–5 Regression)
+**Phase Tested**: Phase 7 — Independent AI Automation Module (plus Phases 1–6 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.71s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (35/35)** | 9 test files passed in 14.53s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 11.11s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (39/39)** | 10 test files passed in 16.35s |
 
 ---
 
-## 2. Test File Breakdown (35 Tests Passed)
+## 2. Test File Breakdown (39 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -59,6 +59,11 @@
    - Enforces user notification consent (`SKIPPED_NO_CONSENT`), notification deduplication, and daily channel rate caps (`SKIPPED_RATE_LIMIT`).
    - Runs unanswered enquiry reminder sweep and retries failing automation jobs up to 3 attempts with failure logging.
    - Verifies all 8 Phase 6 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
+10. `src/test/aiModule.test.ts` **(4/4 passed)**:
+    - Detects English, Hindi, and Malayalam and preserves `original_text` separately from `en`/`hi`/`ml` translations.
+    - Generates listing drafts, candidate/property matches with explicit non-guarantee/non-title disclaimers, and high-severity fraud moderation flags.
+    - Enforces admin master/feature toggles (`BLOCKED_DISABLED`) and monthly INR budget caps (`BLOCKED_CAP`).
+    - Verifies all 4 Phase 7 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 

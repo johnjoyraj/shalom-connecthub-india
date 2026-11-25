@@ -3,6 +3,8 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
 import { AuthProvider } from './context/AuthContext';
 import { AdminControlCentrePage } from './pages/admin/AdminControlCentrePage';
+import { AdminAiControlPage } from './pages/ai/AdminAiControlPage';
+import { AiWorkspacePage } from './pages/ai/AiWorkspacePage';
 import {
   CompleteProfilePage,
   ForgotPasswordPage,
@@ -111,6 +113,7 @@ export function AppRoutes() {
         <Route path="/dashboard/saved" element={<ProtectedRoute><UserDashboardPage section="saved" /></ProtectedRoute>} />
         <Route path="/dashboard/applications" element={<ProtectedRoute><CandidateDashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsAndBillingPage /></ProtectedRoute>} />
+        <Route path="/dashboard/ai" element={<ProtectedRoute><AiWorkspacePage /></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboardPage section="settings" /></ProtectedRoute>} />
 
         {/* Employer Routes (Phase 2) */}
@@ -155,6 +158,7 @@ export function AppRoutes() {
         <Route path="/admin/commissions" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="commissions" /></ProtectedRoute>} />
         <Route path="/admin/reports" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="reports" /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute adminScope="system"><AdminNotificationsPage mode="notifications" /></ProtectedRoute>} />
+        <Route path="/admin/ai" element={<ProtectedRoute adminScope="system"><AdminAiControlPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
