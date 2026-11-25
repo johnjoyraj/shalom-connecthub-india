@@ -6,7 +6,7 @@ import './index.css';
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register(`${import.meta.env.BASE_URL}sw.js`)
       .then((reg) => {
         if (reg.waiting) {
           window.dispatchEvent(new CustomEvent('schi-sw-update', { detail: reg.waiting }));
