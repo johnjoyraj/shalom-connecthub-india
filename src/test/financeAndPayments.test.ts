@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { financeStore, resetFinanceSandboxForTests } from '../services/financeStore';
 import { calculateIndianGst, formatRupeesInWords } from '../services/gstInvoice';
 import { platformStore, resetSandboxForTests } from '../services/platformStore';
+import {
+  buildUpiPaymentUri,
+  generateUpiQrDataUrl,
+  isValidUpiVpa,
+  isValidUtrReference,
+} from '../services/upiRazorpay';
 
 describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
   beforeEach(() => {
@@ -180,5 +186,81 @@ describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
     for (const table of tables) {
       expect(sql).toContain(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;`);
     }
+  });
+
+  it('builds 73793254@ybl UPI intent URI, generates QR code, keeps UTR PENDING until admin verification, and activates after approval', async () => {
+    expect(isValidUpiVpa('73793254@ybl')).toBe(true);
+    expect(isValidUpiVpa('invalid-vpa')).toBe(false);
+    expect(isValidUtrReference('432910293847')).toBe(true);
+    expect(isValidUtrReference('123')).toBe(false);
+
+    const gw = await financeStore.getGatewayConfig();
+    expect(gw.upi_vpa).toBe('73793254@ybl');
+
+    const uri = buildUpiPaymentUri({
+      upiVpa: gw.upi_vpa,
+      payeeName: gw.payee_name,
+      amountInr: 588.82,
+      transactionRef: 'order_sbx_upi_1',
+      note: 'PROFESSIONAL MONTHLY',
+    });
+    expect(uri).toContain('upi://pay?');
+    expect(uri).toContain('pa=73793254%40ybl');
+    expect(uri).toContain('am=588.82');
+
+    const qrDataUrl = await generateUpiQrDataUrl(uri);
+    expect(qrDataUrl.startsWith('data:image/png;base64,')).toBe(true);
+
+    const employer = await platformStore.loginWithPassword('employer@example.in', 'Demo@12345');
+    const { payment } = await financeStore.createSandboxOrder(employer, {
+      planCode: 'PROFESSIONAL',
+      billingCycle: 'MONTHLY',
+      customerStateCode: 'UP',
+      idempotencyKey: 'idem-upi-qr-1',
+      consentConfirmed: true,
+      paymentMethod: 'UPI_INTENT_QR',
+    });
+    expect(payment.payment_method).toBe('UPI_INTENT_QR');
+    expect(payment.upi_vpa).toBe('73793254@ybl');
+
+    const submitted = await financeStore.submitUpiUtrForVerification(
+      employer,
+      payment.razorpay_order_id,
+      '432910293847'
+    );
+    // Strict security rule: UTR submission NEVER activates subscription or marks SUCCEEDED without backend/admin verification
+    expect(submitted.status).toBe('PENDING');
+    expect(submitted.upi_verification_status).toBe('PENDING_VERIFICATION');
+    expect(await financeStore.getEffectiveListingLimit(employer.profile.id)).toBe(1);
+
+    await expect(
+      financeStore.adminVerifyUpiPayment(employer, payment.id, employer.profile.full_name, true)
+    ).rejects.toThrow(/Unauthorized/i);
+    await expect(
+      financeStore.adminUpdateGatewayConfig(employer, { upi_vpa: 'hacker@ybl' })
+    ).rejects.toThrow(/Unauthorized/i);
+
+    const admin = await platformStore.loginWithPassword('admin@shalomconnecthub.in', 'Admin@12345');
+    const verified = await financeStore.adminVerifyUpiPayment(
+      admin,
+      payment.id,
+      employer.profile.full_name,
+      true,
+      'Matched UTR in YBL statement'
+    );
+    expect(verified.payment.status).toBe('SUCCEEDED');
+    expect(verified.payment.upi_verification_status).toBe('VERIFIED');
+    expect(verified.subscription?.plan_code).toBe('PROFESSIONAL');
+    expect(verified.invoice?.tax_type).toBe('INTRA_STATE');
+    expect(await financeStore.getEffectiveListingLimit(employer.profile.id)).toBe(10);
+
+    // Also verify 202611250011 migration contains 73793254@ybl and unique UTR index
+    const migrationSql = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/202611250011_razorpay_upi_config.sql'),
+      'utf8'
+    );
+    expect(migrationSql).toContain('73793254@ybl');
+    expect(migrationSql).toContain('payment_gateway_config');
+    expect(migrationSql).toContain('idx_payments_upi_utr_unique');
   });
 });

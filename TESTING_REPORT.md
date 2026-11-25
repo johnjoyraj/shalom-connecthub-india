@@ -10,13 +10,13 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.52s; largest chunk `290.60 kB` (0 chunk warnings) |
-| Unit, RLS & Security Tests | `npm.cmd test` (`vitest run`) | **PASS (45/45)** | 12 test files passed in 19.71s |
-| Browser E2E & Mobile | `npm.cmd run test:e2e` (`playwright test`) | **PASS (3/3)** | Headless Chrome against `vite preview` in 16.1s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 12.09s; largest chunk `290.81 kB` (0 chunk warnings) |
+| Unit, RLS & Security Tests | `npm.cmd test` (`vitest run`) | **PASS (46/46)** | 12 test files passed in 27.29s |
+| Browser E2E & Mobile | `npm.cmd run test:e2e` (`playwright test`) | **PASS (3/3)** | Headless Chrome against `vite preview` in 22.0s |
 
 ---
 
-## 2. Test File Breakdown (45 Vitest + 3 Playwright E2E Passed)
+## 2. Test File Breakdown (46 Vitest + 3 Playwright E2E Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -49,11 +49,12 @@
    - Enforces strict cross-school isolation: School Admin 1 is blocked from accessing or modifying School 2's admission enquiries or facilities.
    - Supports admission enquiry workflow, teaching/non-teaching vacancies, and profile loading.
    - Verifies all 6 Phase 4 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
-8. `src/test/financeAndPayments.test.ts` **(5/5 passed)**:
+8. `src/test/financeAndPayments.test.ts` **(6/6 passed)**:
    - Computes Indian Intra-State CGST/SGST vs Inter-State IGST and Rupees in Words.
    - Enforces pre-checkout consent, rejects invalid Razorpay HMAC-SHA256 signatures, activates subscriptions and issues GST invoices on valid signatures.
    - Handles failed payments and deduplicates duplicate Razorpay webhooks safely without creating duplicate subscriptions or invoices.
    - Runs expiry reminders (`7D`..`0D`), reverts expired entitlements back to Free (`1` listing), and processes refunds via Finance Admin authorization.
+   - Builds `upi://pay?pa=73793254@ybl...` URIs and scannable QR data URLs, keeps UTR submissions in `PENDING` / `PENDING_VERIFICATION` until Finance Admin verification, activates subscriptions + GST invoices upon approval, and validates `202611250011_razorpay_upi_config.sql`.
    - Verifies all 11 Phase 5 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
 9. `src/test/communicationAndAutomation.test.ts` **(4/4 passed)**:
    - Validates listing availability on enquiry submission, isolates conversation participants, and transitions enquiry status on owner reply.
@@ -80,9 +81,10 @@
 ---
 
 ## 3. Live Supabase (`fkjiafpcbgqtnkdonrtb`) Verification (2026-11-25)
-- All 10 SQL migrations (`202611250001`–`202611250010`) applied cleanly (`63` tables in `public`).
+- All 11 SQL migrations (`202611250001`–`202611250011`) applied cleanly (`63` tables in `public`).
 - Live REST verification with public `anon` key confirmed:
   - `locations?level=eq.STATE`: **36** Indian States & UTs returned.
   - `plans`: **5** configurable subscription tiers returned.
   - `categories`: **3** active initial module categories returned.
+  - `platform_settings?key=eq.payment_gateway_config`: **`73793254@ybl`** (`SHALOM CONNECTHUB INDIA`, `mode: "SANDBOX"`, `upi_qr_enabled: true`, `razorpay_enabled: true`) returned.
   - `profiles`, `payments`, `candidate_documents`, `audit_logs`: **`[]` (empty)** for anonymous caller (RLS isolation verified live).

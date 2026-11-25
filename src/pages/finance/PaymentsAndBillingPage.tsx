@@ -1,13 +1,30 @@
-import { CheckCircle2, CreditCard, FileText, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  QrCode,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { ErrorBanner, LoadingState, SuccessBanner } from '../../components/common/StateViews';
 import { useAuth } from '../../context/AuthContext';
 import { financeStore } from '../../services/financeStore';
+import {
+  buildUpiPaymentUri,
+  generateUpiQrDataUrl,
+  openRazorpayCheckout,
+} from '../../services/upiRazorpay';
 import type {
   BillingCycle,
   CheckoutQuote,
   InvoiceRecord,
+  PaymentGatewayConfig,
+  PaymentMethod,
   PaymentRecord,
   RefundRecord,
   SubscriptionPlan,
@@ -26,23 +43,32 @@ export function PaymentsAndBillingPage() {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [listingLimit, setListingLimit] = useState(1);
+  const [gatewayConfig, setGatewayConfig] = useState<PaymentGatewayConfig | null>(null);
 
   const [selectedPlanCode, setSelectedPlanCode] = useState('PROFESSIONAL');
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('MONTHLY');
   const [stateCode, setStateCode] = useState('UP');
   const [couponCode, setCouponCode] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI_INTENT_QR');
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [refundReason, setRefundReason] = useState('');
+
+  const [activeUpiOrder, setActiveUpiOrder] = useState<PaymentRecord | null>(null);
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null);
+  const [upiUri, setUpiUri] = useState<string | null>(null);
+  const [utrInput, setUtrInput] = useState('');
+  const [copiedVpa, setCopiedVpa] = useState(false);
 
   const loadBilling = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      const [planList, billingData, limit] = await Promise.all([
+      const [planList, billingData, limit, gwConfig] = await Promise.all([
         financeStore.getPlans(),
         financeStore.getMyBillingData(user.profile.id),
         financeStore.getEffectiveListingLimit(user.profile.id),
+        financeStore.getGatewayConfig(),
       ]);
       setPlans(planList);
       setSubscriptions(billingData.subscriptions);
@@ -50,6 +76,7 @@ export function PaymentsAndBillingPage() {
       setInvoices(billingData.invoices);
       setRefunds(billingData.refunds);
       setListingLimit(limit);
+      setGatewayConfig(gwConfig);
     } finally {
       setLoading(false);
     }
@@ -96,6 +123,7 @@ export function PaymentsAndBillingPage() {
         couponCode: couponCode.trim() || undefined,
         idempotencyKey: `idem_${user.profile.id}_${Date.now()}`,
         consentConfirmed: consentChecked,
+        paymentMethod,
       });
 
       if (simulateFail && payment.total_amount_inr > 0) {
@@ -116,6 +144,112 @@ export function PaymentsAndBillingPage() {
       await loadBilling();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Checkout failed.');
+    }
+  };
+
+  const handleGenerateUpiOrder = async () => {
+    setError(null);
+    setNotice(null);
+    try {
+      const { payment } = await financeStore.createSandboxOrder(user, {
+        planCode: selectedPlanCode,
+        billingCycle,
+        customerStateCode: stateCode,
+        couponCode: couponCode.trim() || undefined,
+        idempotencyKey: `idem_upi_${user.profile.id}_${Date.now()}`,
+        consentConfirmed: consentChecked,
+        paymentMethod: 'UPI_INTENT_QR',
+      });
+      if (payment.total_amount_inr <= 0) {
+        setNotice('Free tier activated.');
+        await loadBilling();
+        return;
+      }
+      const vpa = gatewayConfig?.upi_vpa ?? payment.upi_vpa ?? '73793254@ybl';
+      const payeeName = gatewayConfig?.payee_name ?? 'SHALOM CONNECTHUB INDIA';
+      const uri = buildUpiPaymentUri({
+        upiVpa: vpa,
+        payeeName,
+        amountInr: payment.total_amount_inr,
+        transactionRef: payment.razorpay_order_id,
+        note: `${selectedPlanCode} (${billingCycle})`,
+      });
+      const qr = await generateUpiQrDataUrl(uri);
+      setActiveUpiOrder(payment);
+      setUpiUri(uri);
+      setUpiQrDataUrl(qr);
+      setNotice(
+        `UPI QR generated for ₹${payment.total_amount_inr.toFixed(2)} to ${vpa}. Scan or pay via UPI app, then submit your 12-digit UTR below for verification.`
+      );
+      await loadBilling();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to generate UPI QR.');
+    }
+  };
+
+  const handleSubmitUtr = async () => {
+    if (!activeUpiOrder) return;
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await financeStore.submitUpiUtrForVerification(
+        user,
+        activeUpiOrder.razorpay_order_id,
+        utrInput
+      );
+      setActiveUpiOrder(updated);
+      setUtrInput('');
+      setNotice(
+        `UTR "${updated.upi_utr_reference}" submitted! Payment status is PENDING backend/Finance Admin verification before subscription activation.`
+      );
+      await loadBilling();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to submit UTR.');
+    }
+  };
+
+  const handleOpenRazorpayCheckout = async () => {
+    setError(null);
+    setNotice(null);
+    if (!gatewayConfig?.razorpay_key_id) {
+      setError('Razorpay Public Key ID is not configured yet. Use UPI QR/Intent or Sandbox Verification, or ask Admin Finance to configure Razorpay Key ID.');
+      return;
+    }
+    try {
+      const { payment } = await financeStore.createSandboxOrder(user, {
+        planCode: selectedPlanCode,
+        billingCycle,
+        customerStateCode: stateCode,
+        couponCode: couponCode.trim() || undefined,
+        idempotencyKey: `idem_rzp_${user.profile.id}_${Date.now()}`,
+        consentConfirmed: consentChecked,
+        paymentMethod: 'RAZORPAY_CHECKOUT',
+      });
+      await openRazorpayCheckout({
+        keyId: gatewayConfig.razorpay_key_id,
+        amountPaise: Math.round(payment.total_amount_inr * 100),
+        currency: 'INR',
+        name: gatewayConfig.payee_name || 'SHALOM CONNECTHUB INDIA',
+        description: `${selectedPlanCode} (${billingCycle}) Subscription`,
+        orderId: payment.razorpay_order_id,
+        customerName: user.profile.full_name,
+        customerEmail: user.profile.email,
+        customerPhone: user.profile.phone ?? undefined,
+        onSuccess: async (resp) => {
+          try {
+            const res = await financeStore.verifyRazorpayPayment(user, resp);
+            setNotice(`Razorpay payment verified! Plan "${res.subscription?.plan_name}" activated. GST Invoice ${res.invoice?.invoice_number} issued.`);
+            await loadBilling();
+          } catch (verifyErr) {
+            setError(verifyErr instanceof Error ? verifyErr.message : 'Razorpay backend verification failed.');
+          }
+        },
+        onFailure: () => {
+          setError('Razorpay payment failed or was cancelled.');
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to launch Razorpay Checkout.');
     }
   };
 
@@ -199,6 +333,43 @@ export function PaymentsAndBillingPage() {
             </div>
           </div>
 
+          {/* Payment Method Selector */}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-slate-700">Payment Method</label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('UPI_INTENT_QR')}
+                className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-xs transition ${
+                  paymentMethod === 'UPI_INTENT_QR'
+                    ? 'border-brand-600 bg-brand-50 text-brand-900 ring-1 ring-brand-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <QrCode className="h-4 w-4 shrink-0 text-brand-700" />
+                <div>
+                  <p className="font-bold">UPI QR / Intent ({gatewayConfig?.upi_vpa ?? '73793254@ybl'})</p>
+                  <p className="text-[11px] text-slate-500">PhonePe / GPay / Paytm / BHIM + UTR verification</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('RAZORPAY_CHECKOUT')}
+                className={`flex items-center gap-2.5 rounded-xl border p-3 text-left text-xs transition ${
+                  paymentMethod === 'RAZORPAY_CHECKOUT'
+                    ? 'border-brand-600 bg-brand-50 text-brand-900 ring-1 ring-brand-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <CreditCard className="h-4 w-4 shrink-0 text-brand-700" />
+                <div>
+                  <p className="font-bold">Razorpay Checkout ({gatewayConfig?.mode ?? 'SANDBOX'})</p>
+                  <p className="text-[11px] text-slate-500">Cards, NetBanking, Razorpay UPI</p>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
             <input
               type="checkbox"
@@ -211,23 +382,127 @@ export function PaymentsAndBillingPage() {
             </span>
           </label>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => handleSandboxPay(false)}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
-            >
-              <ShieldCheck className="h-4 w-4" />
-              <span>Pay &amp; Verify (Sandbox Success)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSandboxPay(true)}
-              className="rounded-lg border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-            >
-              Simulate Failed Payment
-            </button>
-          </div>
+          {paymentMethod === 'UPI_INTENT_QR' ? (
+            <div className="space-y-4 rounded-xl border border-brand-200 bg-brand-50/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-brand-700">
+                    Direct UPI Receiver VPA
+                  </p>
+                  <p className="font-mono text-sm font-extrabold text-slate-900">
+                    {gatewayConfig?.upi_vpa ?? '73793254@ybl'}
+                  </p>
+                  <p className="text-[11px] text-slate-600">
+                    Payee: {gatewayConfig?.payee_name ?? 'SHALOM CONNECTHUB INDIA'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const vpa = gatewayConfig?.upi_vpa ?? '73793254@ybl';
+                    await navigator.clipboard?.writeText(vpa);
+                    setCopiedVpa(true);
+                    setTimeout(() => setCopiedVpa(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>{copiedVpa ? 'Copied VPA' : 'Copy UPI ID'}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateUpiOrder}
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-800"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>Generate UPI QR &amp; Order</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSandboxPay(false)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span>Pay &amp; Verify (Sandbox Success)</span>
+                </button>
+              </div>
+
+              {activeUpiOrder && upiQrDataUrl && upiUri ? (
+                <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-12">
+                  <div className="flex flex-col items-center justify-center sm:col-span-5">
+                    <img
+                      src={upiQrDataUrl}
+                      alt="UPI Payment QR Code"
+                      className="h-44 w-44 rounded-lg border border-slate-200 p-1"
+                    />
+                    <a
+                      href={upiUri}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span>Open UPI App (₹{activeUpiOrder.total_amount_inr.toFixed(2)})</span>
+                    </a>
+                  </div>
+                  <div className="space-y-3 text-xs sm:col-span-7">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">Order: {activeUpiOrder.razorpay_order_id}</span>
+                      <StatusBadge status={activeUpiOrder.upi_verification_status ?? activeUpiOrder.status} />
+                    </div>
+                    <p className="text-slate-600">
+                      After completing payment to <strong>{activeUpiOrder.upi_vpa ?? gatewayConfig?.upi_vpa ?? '73793254@ybl'}</strong>, enter your 12-digit UTR / UPI Reference ID below. Your subscription activates once Finance Admin verifies the UTR.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={utrInput}
+                        onChange={(e) => setUtrInput(e.target.value.toUpperCase())}
+                        placeholder="Enter UTR / UPI Ref (e.g. 432910293847)"
+                        className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSubmitUtr}
+                        className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800"
+                      >
+                        Submit UTR
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {gatewayConfig?.razorpay_key_id ? (
+                <button
+                  type="button"
+                  onClick={handleOpenRazorpayCheckout}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  <span>Pay with Razorpay Checkout</span>
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => handleSandboxPay(false)}
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                <span>Pay &amp; Verify (Sandbox Success)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSandboxPay(true)}
+                className="rounded-lg border border-red-200 px-4 py-2.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+              >
+                Simulate Failed Payment
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Charge & GST Summary */}
@@ -320,6 +595,13 @@ export function PaymentsAndBillingPage() {
                   <StatusBadge status={pay.status} />
                 </div>
                 <p className="mt-1 text-slate-500">Order: {pay.razorpay_order_id}</p>
+                {pay.payment_method === 'UPI_INTENT_QR' ? (
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    UPI VPA: <span className="font-mono font-semibold">{pay.upi_vpa ?? '73793254@ybl'}</span>
+                    {pay.upi_utr_reference ? ` · UTR: ${pay.upi_utr_reference}` : ''}
+                    {pay.upi_verification_status ? ` · Verification: ${pay.upi_verification_status}` : ''}
+                  </p>
+                ) : null}
                 {pay.failure_reason ? <p className="mt-1 text-red-700">{pay.failure_reason}</p> : null}
                 {pay.status === 'SUCCEEDED' && pay.total_amount_inr > 0 ? (
                   <div className="mt-2 flex gap-2">

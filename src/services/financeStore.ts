@@ -1,9 +1,12 @@
+import { getSupabaseClient } from '../lib/supabase';
 import type { UserWithRoles } from '../types/domain';
 import type {
   BillingCycle,
   CheckoutQuote,
   CommissionRule,
   InvoiceRecord,
+  PaymentGatewayConfig,
+  PaymentMethod,
   PaymentRecord,
   PromoCoupon,
   RefundRecord,
@@ -14,10 +17,12 @@ import type {
 } from '../types/finance';
 import { calculateIndianGst, formatRupeesInWords, SUPPLIER_STATE_CODE } from './gstInvoice';
 import { hasAdminScope } from './permissions';
+import { isValidUpiVpa, isValidUtrReference } from './upiRazorpay';
 
 const FINANCE_SANDBOX_KEY = 'shalom_connecthub_finance_v1';
 
 interface FinanceSandboxState {
+  gatewayConfig: PaymentGatewayConfig;
   plans: SubscriptionPlan[];
   subscriptions: SubscriptionRecord[];
   payments: PaymentRecord[];
@@ -206,6 +211,13 @@ function buildInitialFinanceSandbox(): FinanceSandboxState {
   ];
 
   return {
+    gatewayConfig: {
+      upi_vpa: '73793254@ybl',
+      payee_name: 'SHALOM CONNECTHUB INDIA',
+      razorpay_enabled: true,
+      upi_qr_enabled: true,
+      mode: 'SANDBOX',
+    },
     plans,
     subscriptions: [],
     payments: [],
@@ -332,6 +344,49 @@ function finalizeSuccessfulPayment(
 }
 
 export const financeStore = {
+  async getGatewayConfig(): Promise<PaymentGatewayConfig> {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'payment_gateway_config')
+        .maybeSingle();
+      if (data?.value) {
+        return data.value as PaymentGatewayConfig;
+      }
+    }
+    return { ...readFinanceSandbox().gatewayConfig };
+  },
+
+  async adminUpdateGatewayConfig(
+    actor: UserWithRoles,
+    updates: Partial<PaymentGatewayConfig>
+  ): Promise<PaymentGatewayConfig> {
+    if (!hasAdminScope(actor.roles, 'finance')) {
+      throw new Error('Unauthorized: Finance Admin permission required.');
+    }
+    if (updates.upi_vpa && !isValidUpiVpa(updates.upi_vpa)) {
+      throw new Error('Invalid UPI VPA format (example: 73793254@ybl).');
+    }
+    const state = readFinanceSandbox();
+    state.gatewayConfig = { ...state.gatewayConfig, ...updates };
+    writeFinanceSandbox(state);
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      await supabase
+        .from('platform_settings')
+        .upsert({
+          key: 'payment_gateway_config',
+          value: state.gatewayConfig,
+          category: 'FINANCE',
+          is_public: true,
+        });
+    }
+    return state.gatewayConfig;
+  },
+
   async getPlans(includeInactive = false): Promise<SubscriptionPlan[]> {
     const state = readFinanceSandbox();
     return [...state.plans]
@@ -402,6 +457,7 @@ export const financeStore = {
       couponCode?: string;
       idempotencyKey: string;
       consentConfirmed: boolean;
+      paymentMethod?: PaymentMethod;
     }
   ): Promise<{ payment: PaymentRecord; quote: CheckoutQuote }> {
     if (!input.consentConfirmed) {
@@ -415,12 +471,18 @@ export const financeStore = {
       return { payment: existing, quote };
     }
 
+    const method: PaymentMethod = input.paymentMethod ?? 'RAZORPAY_CHECKOUT';
+
     // Free ₹0 plan activates directly without gateway charge
     const payment: PaymentRecord = {
       id: makeId('pay'),
       user_id: user.profile.id,
       subscription_id: null,
       purpose: 'SUBSCRIPTION',
+      payment_method: method,
+      upi_vpa: method === 'UPI_INTENT_QR' ? state.gatewayConfig.upi_vpa : null,
+      upi_utr_reference: null,
+      upi_verification_status: 'NONE',
       razorpay_order_id: `order_sbx_${Math.random().toString(36).slice(2, 11)}`,
       razorpay_payment_id: null,
       razorpay_signature_verified: false,
@@ -446,6 +508,69 @@ export const financeStore = {
 
     writeFinanceSandbox(state);
     return { payment, quote };
+  },
+
+  async submitUpiUtrForVerification(
+    user: UserWithRoles,
+    orderId: string,
+    utrReference: string
+  ): Promise<PaymentRecord> {
+    const cleanUtr = utrReference.trim();
+    if (!isValidUtrReference(cleanUtr)) {
+      throw new Error('Enter a valid 10–22 character alphanumeric UPI UTR / Reference number.');
+    }
+    const state = readFinanceSandbox();
+    const payment = state.payments.find(
+      (p) => p.razorpay_order_id === orderId && p.user_id === user.profile.id
+    );
+    if (!payment) throw new Error('Payment order not found.');
+    if (payment.status === 'SUCCEEDED') return payment;
+
+    if (state.payments.some((p) => p.id !== payment.id && p.upi_utr_reference === cleanUtr)) {
+      throw new Error('This UTR reference number has already been submitted.');
+    }
+
+    // Never mark SUCCEEDED from client UTR entry alone — awaits backend / Finance Admin verification
+    payment.payment_method = 'UPI_INTENT_QR';
+    payment.upi_vpa = state.gatewayConfig.upi_vpa;
+    payment.upi_utr_reference = cleanUtr;
+    payment.upi_verification_status = 'PENDING_VERIFICATION';
+    payment.status = 'PENDING';
+    writeFinanceSandbox(state);
+    return payment;
+  },
+
+  async adminVerifyUpiPayment(
+    actor: UserWithRoles,
+    paymentId: string,
+    customerName: string,
+    approved: boolean,
+    notes?: string
+  ): Promise<{ payment: PaymentRecord; subscription: SubscriptionRecord | null; invoice: InvoiceRecord | null }> {
+    if (!hasAdminScope(actor.roles, 'finance')) {
+      throw new Error('Unauthorized: Finance Admin permission required.');
+    }
+    const state = readFinanceSandbox();
+    const payment = state.payments.find((p) => p.id === paymentId);
+    if (!payment) throw new Error('Payment not found.');
+
+    if (!approved) {
+      payment.upi_verification_status = 'REJECTED';
+      payment.status = 'FAILED';
+      payment.failure_reason = notes?.trim() || 'UTR could not be verified against bank settlement.';
+      writeFinanceSandbox(state);
+      return { payment, subscription: null, invoice: null };
+    }
+
+    payment.upi_verification_status = 'VERIFIED';
+    const res = finalizeSuccessfulPayment(
+      state,
+      payment,
+      `upi_utr_${payment.upi_utr_reference || Date.now()}`,
+      customerName
+    );
+    writeFinanceSandbox(state);
+    return res;
   },
 
   async generateSandboxValidSignature(orderId: string, razorpayPaymentId: string): Promise<string> {
@@ -652,6 +777,7 @@ export const financeStore = {
     serviceCharges: ServiceChargeRule[];
     commissionRules: CommissionRule[];
     reminderLogs: FinanceSandboxState['reminderLogs'];
+    gatewayConfig: PaymentGatewayConfig;
   }> {
     if (!hasAdminScope(actor.roles, 'finance')) {
       throw new Error('Unauthorized: Finance Admin permission required.');
@@ -666,6 +792,7 @@ export const financeStore = {
       serviceCharges: state.serviceCharges,
       commissionRules: state.commissionRules,
       reminderLogs: state.reminderLogs,
+      gatewayConfig: state.gatewayConfig,
     };
   },
 

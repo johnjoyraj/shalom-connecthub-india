@@ -50,11 +50,27 @@ export interface SubscriptionRecord {
   created_at: string;
 }
 
+export type PaymentMethod = 'RAZORPAY_CHECKOUT' | 'UPI_INTENT_QR';
+export type UpiVerificationStatus = 'NONE' | 'PENDING_VERIFICATION' | 'VERIFIED' | 'REJECTED';
+
+export interface PaymentGatewayConfig {
+  upi_vpa: string;
+  payee_name: string;
+  razorpay_enabled: boolean;
+  razorpay_key_id?: string;
+  upi_qr_enabled: boolean;
+  mode: 'SANDBOX' | 'LIVE';
+}
+
 export interface PaymentRecord {
   id: string;
   user_id: string;
   subscription_id: string | null;
   purpose: PaymentPurpose;
+  payment_method: PaymentMethod;
+  upi_vpa: string | null;
+  upi_utr_reference: string | null;
+  upi_verification_status: UpiVerificationStatus;
   razorpay_order_id: string;
   razorpay_payment_id: string | null;
   razorpay_signature_verified: boolean;

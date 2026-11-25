@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [1.0.1] - 2026-11-25 (UPI QR/Intent `73793254@ybl` & Razorpay Checkout Configuration)
+### Added & Verified
+- **Database Migration**: Added and executed `supabase/migrations/202611250011_razorpay_upi_config.sql` seeding `platform_settings` (`payment_gateway_config` with `upi_vpa: "73793254@ybl"`, `payee_name: "SHALOM CONNECTHUB INDIA"`) and extending `public.payments` with `payment_method`, `upi_vpa`, `upi_utr_reference`, `upi_verification_status`, and `idx_payments_upi_utr_unique`.
+- **UPI QR & Razorpay Checkout Services**: Added `src/services/upiRazorpay.ts` (`qrcode` generator, UPI intent URI builder, Razorpay Checkout SDK loader) and extended `src/types/finance.ts` & `src/services/financeStore.ts` with gateway config management, UPI UTR submission (`PENDING` until verified), and Finance Admin UTR verification.
+- **UI & Tests**: Updated `PaymentsAndBillingPage.tsx`, `AdminFinancePage.tsx`, and `src/test/financeAndPayments.test.ts` (46/46 Vitest + 3/3 Playwright E2E passing).
+
 ## [1.0.0] - 2026-11-25 (Phase 10 — Production Deployment & Documentation Release)
 ### Added
 - **Documentation & CI**: Added `API_DOCUMENTATION.md`, `DEPLOYMENT_GUIDE.md`, `.github/workflows/ci.yml`, and `START_CONNECTHUB_DEV.bat`.
