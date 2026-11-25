@@ -45,5 +45,5 @@
   - All Phases 1–9 application code, migrations, and Edge Functions preserved and regression-tested.
 - **Outstanding User Actions for Live Production Cutover**:
   1. *(Done)* `.env.local` wired with public `anon` key for `fkjiafpcbgqtnkdonrtb`, all 12 SQL migrations (`202611250001`–`202611250012`) applied & verified live (`36` States/UTs, `5` plans, `3` enabled categories, `payment_gateway_config` with `7379325499@ybl`, and live store/Edge Function wiring in `src/services/`), with RLS blocking anonymous reads on private tables.
-  2. Deploy the 5 Deno Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`, `automation-worker`, `ai-gateway`) via Supabase CLI and configure server-side secrets (`RAZORPAY_*`, `WHATSAPP_*`, `GEMINI_API_KEY`) per `DEPLOYMENT_GUIDE.md`.
+  2. *(Deployed — Secrets Pending)* All 5 Deno Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`, `automation-worker`, `ai-gateway`) are deployed & active on `fkjiafpcbgqtnkdonrtb`; add your server-side secrets (`RAZORPAY_*`, `WHATSAPP_*`, `GEMINI_API_KEY`) in Supabase Edge Function Secrets when ready.
   3. Register your primary admin account in the app and assign `super_admin` in SQL Editor.

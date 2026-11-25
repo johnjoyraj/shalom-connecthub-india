@@ -88,3 +88,4 @@
   - `categories`: **3** active initial module categories returned.
   - `platform_settings?key=eq.payment_gateway_config`: **`7379325499@ybl`** (`SHALOM CONNECTHUB INDIA`, `mode: "SANDBOX"`, `upi_qr_enabled: true`, `razorpay_enabled: true`) returned.
   - `profiles`, `payments`, `candidate_documents`, `audit_logs`: **`[]` (empty)** for anonymous caller (RLS isolation verified live).
+- **Edge Functions Deployed & Active (`/functions`, 5/5)**: `razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook` (`verify_jwt: false`), `automation-worker`, and `ai-gateway`.
