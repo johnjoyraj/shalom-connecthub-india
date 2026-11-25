@@ -304,6 +304,45 @@ export interface SearchListingsInput {
   includeUnapproved?: boolean;
 }
 
+const STRICT_EMAIL_RE = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+const DISPOSABLE_OR_TEST_DOMAINS = new Set([
+  'example.com',
+  'example.org',
+  'example.net',
+  'example.in',
+  'test.com',
+  'localhost',
+  'mailinator.com',
+  'yopmail.com',
+  'tempmail.com',
+]);
+
+export function validateEmailAddress(email: string, strictLiveCheck = false): string {
+  const clean = email.trim().toLowerCase();
+  if (!STRICT_EMAIL_RE.test(clean)) {
+    throw new Error('Please enter a valid email address (e.g., name@domain.com).');
+  }
+  if (strictLiveCheck) {
+    const [local, domain] = clean.split('@');
+    if (
+      DISPOSABLE_OR_TEST_DOMAINS.has(domain) ||
+      domain.endsWith('.invalid') ||
+      domain.endsWith('.test') ||
+      local.startsWith('qa.')
+    ) {
+      throw new Error('Please use a real, active email address (test/disposable addresses are blocked to prevent bounced emails).');
+    }
+  }
+  return clean;
+}
+
+function formatAuthEmailError(message: string): string {
+  if (/rate limit/i.test(message)) {
+    return 'Email sending limit temporarily reached. Please try again later or sign in with your password.';
+  }
+  return message;
+}
+
 export const platformStore = {
   isLiveSupabase(): boolean {
     return isSupabaseConfigured();
@@ -392,10 +431,10 @@ export const platformStore = {
   },
 
   async registerUser(payload: RegisterPayload): Promise<UserWithRoles> {
-    const email = payload.email.trim().toLowerCase();
     const fullName = payload.fullName.trim();
     if (!fullName) throw new Error('Full name is required.');
-    if (!email || !email.includes('@')) throw new Error('Valid email address is required.');
+    const supabase = getSupabaseClient();
+    const email = validateEmailAddress(payload.email, Boolean(supabase));
     if (payload.password.length < 8) throw new Error('Password must be at least 8 characters.');
     if (!payload.acceptedTerms || !payload.acceptedPrivacy) {
       throw new Error('You must accept Terms of Service and Privacy Policy (DPDPA consent).');
@@ -406,12 +445,15 @@ export const platformStore = {
       new Set<UserRole>(['customer', ...payload.roles.filter((r) => isSelfAssignableRole(r))])
     );
 
-    const supabase = getSupabaseClient();
     if (supabase) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password: payload.password,
         options: {
+          emailRedirectTo:
+            typeof window !== 'undefined'
+              ? `${window.location.origin}${import.meta.env.BASE_URL}login`
+              : undefined,
           data: {
             full_name: fullName,
             phone: payload.phone?.trim() ?? null,
@@ -421,7 +463,7 @@ export const platformStore = {
           },
         },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(formatAuthEmailError(error.message));
       if (!data.user) throw new Error('Registration did not return a user record.');
 
       const extraRoles = requestedSafeRoles.filter((r) => r !== 'customer');
@@ -524,10 +566,17 @@ export const platformStore = {
     const supabase = getSupabaseClient();
     if (supabase) {
       const isEmail = target.includes('@');
-      const { error } = isEmail
-        ? await supabase.auth.signInWithOtp({ email: target })
-        : await supabase.auth.signInWithOtp({ phone: target });
-      if (error) throw new Error(error.message);
+      if (isEmail) {
+        const cleanEmail = validateEmailAddress(target, true);
+        const { error } = await supabase.auth.signInWithOtp({
+          email: cleanEmail,
+          options: { shouldCreateUser: false },
+        });
+        if (error) throw new Error(formatAuthEmailError(error.message));
+        return { message: `Verification OTP dispatched to ${cleanEmail}.` };
+      }
+      const { error } = await supabase.auth.signInWithOtp({ phone: target });
+      if (error) throw new Error(formatAuthEmailError(error.message));
       return { message: `Verification OTP dispatched to ${target}.` };
     }
     return { message: `Sandbox OTP ready for ${target}. Use demo code 123456 to verify.` };
@@ -564,14 +613,13 @@ export const platformStore = {
   },
 
   async requestPasswordReset(email: string): Promise<string> {
-    const clean = email.trim().toLowerCase();
-    if (!clean || !clean.includes('@')) throw new Error('Enter a valid email address.');
     const supabase = getSupabaseClient();
+    const clean = validateEmailAddress(email, Boolean(supabase));
     if (supabase) {
       const { error } = await supabase.auth.resetPasswordForEmail(clean, {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}login`,
       });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(formatAuthEmailError(error.message));
       return 'Password reset link sent to your registered email.';
     }
     return `If ${clean} is registered, a password recovery link has been queued (sandbox mode).`;

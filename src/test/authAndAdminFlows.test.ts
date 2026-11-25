@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { platformStore, resetSandboxForTests } from '../services/platformStore';
+import { platformStore, resetSandboxForTests, validateEmailAddress } from '../services/platformStore';
 
 describe('Unified Auth, Admin Governance & RLS Integrity', () => {
   beforeEach(() => {
@@ -93,5 +93,13 @@ describe('Unified Auth, Admin Governance & RLS Integrity', () => {
     for (const tableName of tableMatches) {
       expect(rlsSql).toContain(`ALTER TABLE public.${tableName} ENABLE ROW LEVEL SECURITY;`);
     }
+  });
+
+  it('rejects malformed, disposable, and qa-test emails in live mode to prevent bounces', () => {
+    expect(() => validateEmailAddress('bad-email', true)).toThrow(/valid email/i);
+    expect(() => validateEmailAddress('user@example.com', true)).toThrow(/real, active email/i);
+    expect(() => validateEmailAddress('qa.test123@gmail.com', true)).toThrow(/real, active email/i);
+    expect(() => validateEmailAddress('temp@mailinator.com', true)).toThrow(/real, active email/i);
+    expect(validateEmailAddress('John.Doe@Gmail.com', true)).toBe('john.doe@gmail.com');
   });
 });
