@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111948"/>
+      <stop offset="100%" stop-color="#1f44db"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#g)"/>
+  <circle cx="96" cy="96" r="54" fill="none" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M96 42a54 54 0 0 1 0 108M42 96h108M56 66h80M56 126h80" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+  <text x="96" y="175" text-anchor="middle" fill="#ffffff" font-family="system-ui, sans-serif" font-size="16" font-weight="700">CONNECTHUB</text>
+</svg>

@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.8.0] - 2026-11-25 (Phase 8 — PWA & Mobile Optimisation)
+### Added
+- **PWA Assets**: Added `public/manifest.webmanifest`, `public/icons/icon-192.svg`, `public/icons/icon-512.svg`, `public/offline.html`, and `public/sw.js` with strict cache exclusions for private dashboards, auth, private documents, and Razorpay endpoints.
+- **PWA UX & Performance**: Added `PwaBanner.tsx` (install + SW update prompts), `pwaCacheRules.ts`, `imageCompression.ts`, Service Worker registration in `main.tsx`, and route-level `React.lazy` code-splitting in `App.tsx`.
+- **Automated Tests**: Added `src/test/pwaAndPerformance.test.ts` (42/42 total tests passing).
+
 ## [0.7.0] - 2026-11-25 (Phase 7 — Independent AI Automation Module)
 ### Added
 - **Database & Edge Gateway**: Added `supabase/migrations/202611250009_phase7_ai_module.sql` (4 RLS-enabled AI governance tables) and `supabase/functions/ai-gateway/index.ts` (server-side Gemini API proxy with `GEMINI_API_KEY` isolation, monthly spend cap, and safety guardrails).

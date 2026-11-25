@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline — SHALOM CONNECTHUB INDIA</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .card {
+        max-width: 440px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 32px;
+        text-align: center;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+      }
+      h1 { font-size: 20px; margin: 0 0 8px; color: #1935b8; }
+      p { font-size: 14px; line-height: 1.5; color: #475569; margin: 0 0 20px; }
+      button {
+        background: #1935b8;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>You are currently offline</h1>
+      <p>
+        SHALOM CONNECTHUB INDIA needs an active connection for live search, private documents, enquiries, and payments.
+        Please reconnect and try again.
+      </p>
+      <button onclick="window.location.reload()">Retry Connection</button>
+    </div>
+  </body>
+</html>

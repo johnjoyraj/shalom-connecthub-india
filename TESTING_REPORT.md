@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 7 — Independent AI Automation Module (plus Phases 1–6 Regression)
+**Phase Tested**: Phase 8 — PWA & Mobile Optimisation (plus Phases 1–7 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 11.11s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (39/39)** | 10 test files passed in 16.35s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 10.81s (route-split chunks generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (42/42)** | 11 test files passed in 17.64s |
 
 ---
 
-## 2. Test File Breakdown (39 Tests Passed)
+## 2. Test File Breakdown (42 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -64,6 +64,10 @@
     - Generates listing drafts, candidate/property matches with explicit non-guarantee/non-title disclaimers, and high-severity fraud moderation flags.
     - Enforces admin master/feature toggles (`BLOCKED_DISABLED`) and monthly INR budget caps (`BLOCKED_CAP`).
     - Verifies all 4 Phase 7 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
+11. `src/test/pwaAndPerformance.test.ts` **(3/3 passed)**:
+    - Verifies `manifest.webmanifest`, icons, `offline.html`, and `sw.js`.
+    - Verifies `isSafeToCacheUrl` rejects private dashboards, auth endpoints, private documents, Razorpay payment endpoints, and `POST` requests.
+    - Verifies client-side image scaling preserves aspect ratio.
 
 ---
 
