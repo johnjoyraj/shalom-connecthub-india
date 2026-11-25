@@ -5,42 +5,41 @@
 
 ---
 
-## Architecture Overview
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS, React Router (mobile-first responsive UI)
-- **Backend & Single Source of Truth**: Supabase PostgreSQL (`fkjiafpcbgqtnkdonrtb`), Supabase Auth, Supabase Storage, Row Level Security (RLS), Edge Functions
-- **Payments (Phase 5)**: Razorpay (server-verified Orders, Checkout, Webhooks, GST Invoices, Refunds)
-- **Notifications (Phase 6)**: Official WhatsApp Business Platform API, Email, FCM Push (consent-governed)
-- **AI Module (Phase 7)**: Independent server-side AI service (listing assistant, EN/HI/ML translation, matching, moderation)
+## Implemented Modules (Phases 0–10)
+- **Core Platform & Admin Control Centre**: Unified auth, multi-role/multi-org RBAC, All-India 36 States/UTs + District/City/PIN location taxonomy, configurable future modules, DPDPA consent records, and immutable audit logs.
+- **Module A — Staff Connect**: Job vacancies (full-time, part-time, temporary, contract), candidate profiles/education/experience, private CV uploads, application tracking, shortlisting, and recruitment enquiries.
+- **Module B — Property Connect**: Dynamic forms per property type & purpose (houses, apartments, shops, offices, hostels/PGs, plots, agricultural land), address privacy controls, owner/authorised-agent isolation, visit requests, reporting, and non-legal-title disclaimers.
+- **Module C — School Connect**: Schools, colleges, preschools, tuition centres & coaching institutions, classes, facilities, admission enquiries, teaching/non-teaching recruitment, and cross-school RLS isolation.
+- **Subscription, Charges & Razorpay Engine**: Admin-configurable plans, GST tax invoices (CGST/SGST vs. IGST + Rupees in Words), Razorpay order/signature/webhook Edge Functions, idempotency, refunds, and expiry reminders (`7D`, `3D`, `1D`, `0D`).
+- **Enquiry & Notification Automation**: Common enquiry lifecycle, 2-way messaging, consent-checked Email / Official WhatsApp Cloud API / Push notifications, rate caps, and retry/failure job queue.
+- **Independent AI Module**: Listing assistant, EN/HI/ML language detection & translation (preserving original text), candidate/property matching, moderation flagging, customer assistant, and monthly INR spend caps.
+- **PWA & Security**: Installable manifest, offline fallback, safe service worker excluding private/payment/document routes, vendor chunk splitting, 45 Vitest unit/security tests, and 3 Playwright browser E2E tests.
 
 ---
 
-## Quick Start (Local Development)
-1. Install dependencies:
-   ```powershell
-   npm.cmd install
-   ```
-2. Configure environment variables in `.env.local`:
-   - `VITE_SUPABASE_URL=https://fkjiafpcbgqtnkdonrtb.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY=<your-anon-key-from-supabase-project-settings>`
-   *(While `VITE_SUPABASE_ANON_KEY` is blank, the app runs in local sandbox mode for UI and Vitest verification.)*
-3. Apply Supabase SQL migrations (via Supabase SQL Editor or `npx.cmd supabase db push`):
-   - `supabase/migrations/202611250001_phase1_core_schema.sql`
-   - `supabase/migrations/202611250002_phase1_rls_policies.sql`
-   - `supabase/migrations/202611250003_phase1_india_seed.sql`
-4. Run dev server, build, and tests:
-   ```powershell
-   npm.cmd run dev
-   npm.cmd run build
-   npm.cmd test
-   ```
+## Quick Start
+```powershell
+npm.cmd install
+npm.cmd run dev        # Or double-click START_CONNECTHUB_DEV.bat
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd test           # Vitest (45 tests)
+npm.cmd run test:e2e   # Playwright E2E (3 tests)
+```
+See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) to connect live Supabase project `fkjiafpcbgqtnkdonrtb`.
 
 ---
 
-## Documentation Index
+## Complete Documentation Suite
 - [MASTER_PROJECT_INSTRUCTIONS.md](./MASTER_PROJECT_INSTRUCTIONS.md)
-- [PROJECT_STATUS.md](./PROJECT_STATUS.md)
-- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md)
+- [PROJECT_AUDIT.md](./PROJECT_AUDIT.md)
+- [EXISTING_FEATURES.md](./EXISTING_FEATURES.md)
+- [DATABASE_AUDIT.md](./DATABASE_AUDIT.md)
 - [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
+- [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+- [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md)
+- [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
 - [SECURITY_GUIDE.md](./SECURITY_GUIDE.md)
 - [TESTING_REPORT.md](./TESTING_REPORT.md)
+- [PROJECT_STATUS.md](./PROJECT_STATUS.md)
 - [CHANGELOG.md](./CHANGELOG.md)

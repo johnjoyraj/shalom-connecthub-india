@@ -1,5 +1,10 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [1.0.0] - 2026-11-25 (Phase 10 — Production Deployment & Documentation Release)
+### Added
+- **Documentation & CI**: Added `API_DOCUMENTATION.md`, `DEPLOYMENT_GUIDE.md`, `.github/workflows/ci.yml`, and `START_CONNECTHUB_DEV.bat`.
+- **Updated Docs**: Finalized `README.md`, `SECURITY_GUIDE.md`, `TESTING_REPORT.md`, `PROJECT_STATUS.md`, and `CHANGELOG.md` covering all Phases 0–10.
+
 ## [0.9.0] - 2026-11-25 (Phase 9 — Security, Performance & Playwright E2E)
 ### Added & Verified
 - **Bundle Performance**: Configured `vite.config.ts` `manualChunks` (`react-vendor`, `supabase-vendor`, `icons-vendor`) eliminating all >500 kB chunk warnings (largest chunk `290.60 kB`).

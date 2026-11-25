@@ -1,20 +1,17 @@
 # SECURITY GUIDE — SHALOM CONNECTHUB INDIA
 
-## 1. Core Security Principles Enforced in Phase 1
-1. **Row Level Security (RLS) Everywhere**: Every user-accessible PostgreSQL table has `ENABLE ROW LEVEL SECURITY` enforced in `202611250002_phase1_rls_policies.sql`.
-2. **Zero Client-Side Secret Exposure**:
-   - Browser code only reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-   - `SUPABASE_SERVICE_ROLE_KEY`, Razorpay secret keys, WhatsApp permanent tokens, and AI API keys must reside exclusively in Supabase Edge Function secrets.
-3. **Privilege Escalation Prevention**:
-   - Self-registration (`registerUser`) and self-profile role updates (`updateMyProfile`) filter out `super_admin`, `admin_moderation`, `admin_finance`, and `admin_system`.
-   - PostgreSQL RLS `user_roles` policies restrict `INSERT`/`UPDATE` to non-admin roles unless `has_role(auth.uid(), 'super_admin')` is true.
-4. **Scoped Administrative Access**:
-   - `admin_moderation` (moderation & users), `admin_finance` (billing/plans/refunds), `admin_system` (categories/locations/flags), and `super_admin` are separated both in UI guards and PostgreSQL RLS helpers.
-5. **Immutable Audit Trail**:
-   - `audit_logs` has read-only admin `SELECT` policy and no `UPDATE`/`DELETE` policies; writes happen via `SECURITY DEFINER` function `public.record_audit_log(...)`.
-6. **Storage Bucket Isolation**:
-   - `public-media`: public read, authenticated write restricted to user's own UID folder.
-   - `private-documents`: private bucket; read restricted strictly to owning UID folder + moderation/super admins.
-7. **Indian Compliance & Claim Boundaries**:
-   - Mandatory Terms + Privacy DPDPA consent recorded on registration.
-   - Verification records explicitly state that document review does not constitute legal title or statutory certification.
+## 1. Defense-in-Depth Controls Verified Across Phases 1–10
+1. **100% Row Level Security Coverage**: Automated test `src/test/securityAudit.test.ts` verifies every PostgreSQL table across all 9 SQL migrations (`202611250001`–`202611250009`) executes `ENABLE ROW LEVEL SECURITY`.
+2. **Server-Side Secret Isolation**:
+   - Browser bundle receives only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+   - `SUPABASE_SERVICE_ROLE_KEY`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `WHATSAPP_API_TOKEN`, and `GEMINI_API_KEY` reside exclusively in Supabase Edge Function secrets (`securityAudit.test.ts` scans both `src/` and `dist/`).
+3. **Module-Specific Privacy Isolation**:
+   - **Staff Connect**: Candidate CVs in `candidate_documents` / `private-documents` are readable strictly by the candidate, employers they applied to, and moderation/super admins.
+   - **Property Connect**: `property_locations` masks `full_address` in public views per `address_privacy`; property agents can only access properties where `authorised_agent_id = auth.uid()`; `property_documents` carry mandatory non-legal-title disclaimers.
+   - **School Connect**: `is_school_admin_for` isolates `admission_enquiries`, `school_classes`, `school_facilities`, and `school_staff_vacancies` per institution.
+4. **Payment & Webhook Integrity**:
+   - Payments are verified server-side via HMAC-SHA256 (`razorpay-verify-payment`, `razorpay-webhook`) with idempotency keys and zero card-data storage.
+5. **PWA Cache Safety**:
+   - Service Worker `public/sw.js` and `src/services/pwaCacheRules.ts` never cache `/dashboard`, `/admin`, `/employer`, `/owner`, `/school-dashboard`, `/auth/v1/`, `private-documents`, or `razorpay` endpoints.
+6. **Privilege Escalation Prevention & Immutable Audit Trail**:
+   - Self-registration strips `super_admin` and `admin_*` roles; `audit_logs` has no client `UPDATE` or `DELETE` policies.
