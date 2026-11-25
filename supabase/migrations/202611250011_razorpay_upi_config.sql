@@ -1,12 +1,12 @@
 -- ============================================================================
--- SHALOM CONNECTHUB INDIA — Phase 10+: Razorpay & UPI (73793254@ybl) Config
+-- SHALOM CONNECTHUB INDIA — Phase 10+: Razorpay & UPI (7379325499@ybl) Config
 -- ============================================================================
 
 INSERT INTO public.platform_settings (key, value, category, description, is_public)
 VALUES (
   'payment_gateway_config',
   '{
-    "upi_vpa": "73793254@ybl",
+    "upi_vpa": "7379325499@ybl",
     "payee_name": "SHALOM CONNECTHUB INDIA",
     "razorpay_enabled": true,
     "upi_qr_enabled": true,

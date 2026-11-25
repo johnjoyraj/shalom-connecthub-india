@@ -212,7 +212,7 @@ function buildInitialFinanceSandbox(): FinanceSandboxState {
 
   return {
     gatewayConfig: {
-      upi_vpa: '73793254@ybl',
+      upi_vpa: '7379325499@ybl',
       payee_name: 'SHALOM CONNECTHUB INDIA',
       razorpay_enabled: true,
       upi_qr_enabled: true,
@@ -367,7 +367,7 @@ export const financeStore = {
       throw new Error('Unauthorized: Finance Admin permission required.');
     }
     if (updates.upi_vpa && !isValidUpiVpa(updates.upi_vpa)) {
-      throw new Error('Invalid UPI VPA format (example: 73793254@ybl).');
+      throw new Error('Invalid UPI VPA format (example: 7379325499@ybl).');
     }
     const state = readFinanceSandbox();
     state.gatewayConfig = { ...state.gatewayConfig, ...updates };

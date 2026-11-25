@@ -188,14 +188,14 @@ describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
     }
   });
 
-  it('builds 73793254@ybl UPI intent URI, generates QR code, keeps UTR PENDING until admin verification, and activates after approval', async () => {
-    expect(isValidUpiVpa('73793254@ybl')).toBe(true);
+  it('builds 7379325499@ybl UPI intent URI, generates QR code, keeps UTR PENDING until admin verification, and activates after approval', async () => {
+    expect(isValidUpiVpa('7379325499@ybl')).toBe(true);
     expect(isValidUpiVpa('invalid-vpa')).toBe(false);
     expect(isValidUtrReference('432910293847')).toBe(true);
     expect(isValidUtrReference('123')).toBe(false);
 
     const gw = await financeStore.getGatewayConfig();
-    expect(gw.upi_vpa).toBe('73793254@ybl');
+    expect(gw.upi_vpa).toBe('7379325499@ybl');
 
     const uri = buildUpiPaymentUri({
       upiVpa: gw.upi_vpa,
@@ -205,7 +205,7 @@ describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
       note: 'PROFESSIONAL MONTHLY',
     });
     expect(uri).toContain('upi://pay?');
-    expect(uri).toContain('pa=73793254%40ybl');
+    expect(uri).toContain('pa=7379325499%40ybl');
     expect(uri).toContain('am=588.82');
 
     const qrDataUrl = await generateUpiQrDataUrl(uri);
@@ -221,7 +221,7 @@ describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
       paymentMethod: 'UPI_INTENT_QR',
     });
     expect(payment.payment_method).toBe('UPI_INTENT_QR');
-    expect(payment.upi_vpa).toBe('73793254@ybl');
+    expect(payment.upi_vpa).toBe('7379325499@ybl');
 
     const submitted = await financeStore.submitUpiUtrForVerification(
       employer,
@@ -254,12 +254,12 @@ describe('Phase 5: Subscription, GST Invoice & Razorpay Engine', () => {
     expect(verified.invoice?.tax_type).toBe('INTRA_STATE');
     expect(await financeStore.getEffectiveListingLimit(employer.profile.id)).toBe(10);
 
-    // Also verify 202611250011 migration contains 73793254@ybl and unique UTR index
+    // Also verify 202611250011 migration contains 7379325499@ybl and unique UTR index
     const migrationSql = readFileSync(
       resolve(process.cwd(), 'supabase/migrations/202611250011_razorpay_upi_config.sql'),
       'utf8'
     );
-    expect(migrationSql).toContain('73793254@ybl');
+    expect(migrationSql).toContain('7379325499@ybl');
     expect(migrationSql).toContain('payment_gateway_config');
     expect(migrationSql).toContain('idx_payments_upi_utr_unique');
   });

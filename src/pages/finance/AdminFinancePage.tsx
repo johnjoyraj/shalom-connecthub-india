@@ -33,7 +33,7 @@ export function AdminFinancePage({ tab }: { tab: AdminFinanceTab }) {
   const [commissionRules, setCommissionRules] = useState<CommissionRule[]>([]);
   const [gatewayConfig, setGatewayConfig] = useState<PaymentGatewayConfig | null>(null);
 
-  const [upiVpaInput, setUpiVpaInput] = useState('73793254@ybl');
+  const [upiVpaInput, setUpiVpaInput] = useState('7379325499@ybl');
   const [payeeNameInput, setPayeeNameInput] = useState('SHALOM CONNECTHUB INDIA');
   const [razorpayKeyInput, setRazorpayKeyInput] = useState('');
   const [gatewayModeInput, setGatewayModeInput] = useState<'SANDBOX' | 'LIVE'>('SANDBOX');
@@ -248,7 +248,7 @@ export function AdminFinancePage({ tab }: { tab: AdminFinanceTab }) {
                       type="text"
                       value={upiVpaInput}
                       onChange={(e) => setUpiVpaInput(e.target.value)}
-                      placeholder="73793254@ybl"
+                      placeholder="7379325499@ybl"
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs"
                     />
                   </div>
@@ -342,7 +342,7 @@ export function AdminFinancePage({ tab }: { tab: AdminFinanceTab }) {
                             </p>
                             <p className="text-slate-600">
                               Order: <span className="font-mono">{pay.razorpay_order_id}</span> · VPA:{' '}
-                              <span className="font-mono font-semibold">{pay.upi_vpa ?? '73793254@ybl'}</span>
+                              <span className="font-mono font-semibold">{pay.upi_vpa ?? '7379325499@ybl'}</span>
                             </p>
                             <p className="font-mono font-bold text-brand-800">
                               UTR Reference: {pay.upi_utr_reference}

@@ -165,7 +165,7 @@ export function PaymentsAndBillingPage() {
         await loadBilling();
         return;
       }
-      const vpa = gatewayConfig?.upi_vpa ?? payment.upi_vpa ?? '73793254@ybl';
+      const vpa = gatewayConfig?.upi_vpa ?? payment.upi_vpa ?? '7379325499@ybl';
       const payeeName = gatewayConfig?.payee_name ?? 'SHALOM CONNECTHUB INDIA';
       const uri = buildUpiPaymentUri({
         upiVpa: vpa,
@@ -348,7 +348,7 @@ export function PaymentsAndBillingPage() {
               >
                 <QrCode className="h-4 w-4 shrink-0 text-brand-700" />
                 <div>
-                  <p className="font-bold">UPI QR / Intent ({gatewayConfig?.upi_vpa ?? '73793254@ybl'})</p>
+                  <p className="font-bold">UPI QR / Intent ({gatewayConfig?.upi_vpa ?? '7379325499@ybl'})</p>
                   <p className="text-[11px] text-slate-500">PhonePe / GPay / Paytm / BHIM + UTR verification</p>
                 </div>
               </button>
@@ -390,7 +390,7 @@ export function PaymentsAndBillingPage() {
                     Direct UPI Receiver VPA
                   </p>
                   <p className="font-mono text-sm font-extrabold text-slate-900">
-                    {gatewayConfig?.upi_vpa ?? '73793254@ybl'}
+                    {gatewayConfig?.upi_vpa ?? '7379325499@ybl'}
                   </p>
                   <p className="text-[11px] text-slate-600">
                     Payee: {gatewayConfig?.payee_name ?? 'SHALOM CONNECTHUB INDIA'}
@@ -399,7 +399,7 @@ export function PaymentsAndBillingPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    const vpa = gatewayConfig?.upi_vpa ?? '73793254@ybl';
+                    const vpa = gatewayConfig?.upi_vpa ?? '7379325499@ybl';
                     await navigator.clipboard?.writeText(vpa);
                     setCopiedVpa(true);
                     setTimeout(() => setCopiedVpa(false), 2000);
@@ -452,7 +452,7 @@ export function PaymentsAndBillingPage() {
                       <StatusBadge status={activeUpiOrder.upi_verification_status ?? activeUpiOrder.status} />
                     </div>
                     <p className="text-slate-600">
-                      After completing payment to <strong>{activeUpiOrder.upi_vpa ?? gatewayConfig?.upi_vpa ?? '73793254@ybl'}</strong>, enter your 12-digit UTR / UPI Reference ID below. Your subscription activates once Finance Admin verifies the UTR.
+                      After completing payment to <strong>{activeUpiOrder.upi_vpa ?? gatewayConfig?.upi_vpa ?? '7379325499@ybl'}</strong>, enter your 12-digit UTR / UPI Reference ID below. Your subscription activates once Finance Admin verifies the UTR.
                     </p>
                     <div className="flex gap-2">
                       <input
@@ -597,7 +597,7 @@ export function PaymentsAndBillingPage() {
                 <p className="mt-1 text-slate-500">Order: {pay.razorpay_order_id}</p>
                 {pay.payment_method === 'UPI_INTENT_QR' ? (
                   <p className="mt-1 text-[11px] text-slate-600">
-                    UPI VPA: <span className="font-mono font-semibold">{pay.upi_vpa ?? '73793254@ybl'}</span>
+                    UPI VPA: <span className="font-mono font-semibold">{pay.upi_vpa ?? '7379325499@ybl'}</span>
                     {pay.upi_utr_reference ? ` · UTR: ${pay.upi_utr_reference}` : ''}
                     {pay.upi_verification_status ? ` · Verification: ${pay.upi_verification_status}` : ''}
                   </p>

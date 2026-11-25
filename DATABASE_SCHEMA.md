@@ -122,5 +122,5 @@
 
 ## Razorpay & Direct UPI Gateway Config (`202611250011_razorpay_upi_config.sql`)
 
-- Upserts `platform_settings` key `payment_gateway_config` (`is_public = true`) with configurable `upi_vpa` (`"73793254@ybl"`), `payee_name` (`"SHALOM CONNECTHUB INDIA"`), `razorpay_enabled: true`, `upi_qr_enabled: true`, and `mode: "SANDBOX"`.
+- Upserts `platform_settings` key `payment_gateway_config` (`is_public = true`) with configurable `upi_vpa` (`"7379325499@ybl"`), `payee_name` (`"SHALOM CONNECTHUB INDIA"`), `razorpay_enabled: true`, `upi_qr_enabled: true`, and `mode: "SANDBOX"`.
 - Alters `public.payments` with `payment_method` (`RAZORPAY_CHECKOUT` / `UPI_INTENT_QR`), `upi_vpa`, `upi_utr_reference`, `upi_verification_status` (`NONE`, `PENDING_VERIFICATION`, `VERIFIED`, `REJECTED`), and unique partial index `idx_payments_upi_utr_unique` on non-null `upi_utr_reference` to prevent UTR replay.
