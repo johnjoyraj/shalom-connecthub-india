@@ -1,8 +1,8 @@
 # PROJECT STATUS — SHALOM CONNECTHUB INDIA
 
 **Last Updated**: 2026-11-25  
-**Current Phase**: Phase 1 — Core Architecture, Database, Auth, Profiles & Admin Dashboard  
-**Overall Status**: `NEEDS REVIEW` (Phase 1 Code, SQL Migrations, RLS & 13 Vitest Tests Passed; Live Supabase Key & Migration Push Pending)
+**Current Phase**: Phase 2 — Module A: Staff Connect  
+**Overall Status**: `TESTING` (Phases 1 & 2 implemented and 17/17 Vitest tests passing; live Supabase anon key & SQL migration push to `fkjiafpcbgqtnkdonrtb` pending)
 
 ---
 
@@ -22,9 +22,9 @@
 | :---: | :--- | :---: | :--- |
 | **0** | Existing Project Audit & Pre-Dev Docs | `COMPLETED` | Audited `e:\MYWORKSPACE`; committed baseline docs |
 | **0.5** | Toolchain Setup (Node.js LTS, npm, Git init) | `COMPLETED` | Node.js `v26.13.1`, `npm.cmd`/`npx.cmd` `11.20.0`, Git initialized |
-| **1** | Core Architecture, DB/RLS, Auth, Locations & Admin Centre | `TESTING` | React/TS/Vite/Tailwind app, 18-table SQL + RLS + 36 States/UTs seed, 13/13 Vitest tests pass; needs `VITE_SUPABASE_ANON_KEY` & migration push to `fkjiafpcbgqtnkdonrtb` |
-| **2** | Module A: Staff Connect | `NOT STARTED` | Awaits Phase 1 live Supabase verification |
-| **3** | Module B: Property Connect | `NOT STARTED` | Depends on Phase 1 |
+| **1** | Core Architecture, DB/RLS, Auth, Locations & Admin Centre | `TESTING` | 18-table SQL + RLS + 36 States/UTs seed, 13/13 Vitest tests pass; awaiting live Supabase push |
+| **2** | Module A: Staff Connect | `TESTING` | 9-table SQL + RLS (`202611250004`), `/staff`, `/jobs`, `/candidates`, `/dashboard/applications`, `/employer/*`, 17/17 tests pass; awaiting live Supabase push |
+| **3** | Module B: Property Connect | `NOT STARTED` | Next module phase |
 | **4** | Module C: School Connect | `NOT STARTED` | Depends on Phase 1 |
 | **5** | Subscription, Charges & Razorpay Engine | `NOT STARTED` | Depends on Phases 1–4 |
 | **6** | Common Enquiry & Notification Automation | `NOT STARTED` | Depends on Phases 1–5 |
@@ -35,36 +35,26 @@
 
 ---
 
-## Session Report — 2026-11-25 (Session 2: Phase 1 Core Implementation)
+## Session Report — 2026-11-25 (Session 3: Phase 2 — Staff Connect)
 
 - **Completed Work**:
-  - Installed Node.js LTS (`v26.13.1`) via `winget` and committed Phase 0 baseline (`401001f`).
-  - Scaffolded Vite + React 19 + TypeScript + Tailwind CSS + React Router + `@supabase/supabase-js` + Vitest.
-  - Authored 3 Supabase PostgreSQL migrations (`202611250001_phase1_core_schema.sql`, `202611250002_phase1_rls_policies.sql`, `202611250003_phase1_india_seed.sql`) with 18 RLS-enabled tables, storage bucket isolation, and All-India 36 States/UTs + major cities seed.
-  - Implemented unified auth (login, registration with DPDPA consent, OTP verify, forgot password, profile completion), multi-role/organisation management, All-India location picker & search, public/compliance routes, and role-scoped Super Admin Control Centre with immutable audit logs.
+  - Created `supabase/migrations/202611250004_phase2_staff_connect.sql` with 9 normalized tables and strict RLS policies (including private CV access restricted to candidate owner, applied employer, and authorized admins).
+  - Built `src/types/staff.ts` and `src/services/staffStore.ts` supporting job filtering/sorting/pagination, candidate profiles, educations, experiences, CV upload, duplicate-safe applications, shortlisting timeline events, and recruitment enquiries.
+  - Built UI pages: `StaffHubPage` (`/staff`), `JobsDirectoryPage` (`/jobs`), `CandidatesDirectoryPage` (`/candidates`), `CandidateDashboardPage` (`/dashboard/applications`), and `EmployerDashboardPage` (`/employer/*`).
 - **Existing Features Preserved**:
-  - Sibling workspace projects (`SHALOM`, `school`, `BILLBOOK-SAAS`, `WHATSAPP-AUTOMATION`, `prayforindia`, etc.) untouched.
-  - Phase 0 audit & blueprint docs preserved.
-- **New Features Implemented**:
-  - Core React shell, `platformStore` (live Supabase + local sandbox dual mode), `AuthContext`, `LocationPicker`, `ProtectedRoute`, `HomePage`, `PricingPage`, `StaticCompliancePages`, `AuthPages`, `UserDashboardPage`, `AdminControlCentrePage`.
-- **Files Created / Modified**:
-  - `package.json`, `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json`, `vite.config.ts`, `tailwind.config.js`, `postcss.config.js`, `.env.example`, `.env.local` (gitignored), `index.html`
-  - `supabase/config.toml`, `supabase/migrations/202611250001_phase1_core_schema.sql`, `supabase/migrations/202611250002_phase1_rls_policies.sql`, `supabase/migrations/202611250003_phase1_india_seed.sql`
-  - `src/**` (types, lib, data, services, context, components, pages, tests)
-  - `README.md`, `DATABASE_SCHEMA.md`, `SECURITY_GUIDE.md`, `TESTING_REPORT.md`, `CHANGELOG.md`, `PROJECT_STATUS.md`
-- **Database Changes**:
-  - Authored 18 Phase 1 PostgreSQL tables + strict RLS policies + All-India seed in `supabase/migrations/` (pending push to `fkjiafpcbgqtnkdonrtb`).
-- **API Integrations**:
-  - Configured `@supabase/supabase-js` client targeting `https://fkjiafpcbgqtnkdonrtb.supabase.co`.
+  - All Phase 1 auth, RBAC, location, and Admin Control Centre modules intact and regression-tested.
+- **Files Created**:
+  - `supabase/migrations/202611250004_phase2_staff_connect.sql`
+  - `src/types/staff.ts`, `src/services/staffStore.ts`
+  - `src/pages/staff/StaffHubPage.tsx`, `JobsDirectoryPage.tsx`, `CandidatesDirectoryPage.tsx`, `CandidateDashboardPage.tsx`, `EmployerDashboardPage.tsx`
+  - `src/test/staffConnect.test.ts`
+- **Files Modified**:
+  - `src/App.tsx`, `DATABASE_SCHEMA.md`, `TESTING_REPORT.md`, `CHANGELOG.md`, `PROJECT_STATUS.md`
 - **Tests Executed**:
   - `npm.cmd run typecheck` — Pass (0 errors)
-  - `npm.cmd run build` — Pass (`dist/` built in 7.82s)
-  - `npm.cmd test` — Pass (4 test files, 13 tests passed)
+  - `npm.cmd run build` — Pass (`dist/` built in 8.86s)
+  - `npm.cmd test` — Pass (5 test files, 17 tests passed)
 - **Known Issues**:
-  1. `VITE_SUPABASE_ANON_KEY` in `.env.local` is currently blank, so live Supabase Auth/DB operations require adding the project's anon key and running the 3 SQL migrations in Supabase project `fkjiafpcbgqtnkdonrtb`.
-- **Outstanding Tasks**:
-  - Paste `VITE_SUPABASE_ANON_KEY` into `.env.local`.
-  - Apply the 3 SQL migrations in Supabase Dashboard SQL Editor (or `npx.cmd supabase db push`) for project `fkjiafpcbgqtnkdonrtb`.
-  - Verify live Supabase signup/login & RLS queries, then mark Phase 1 `COMPLETED`.
+  1. Live Supabase verification still requires pasting `VITE_SUPABASE_ANON_KEY` into `.env.local` and running migrations `202611250001`–`202611250004` in Supabase project `fkjiafpcbgqtnkdonrtb`.
 - **Next Recommended Task**:
-  - Link live Supabase (`VITE_SUPABASE_ANON_KEY` + run Phase 1 SQL migrations) and proceed to **Phase 2: Module A — Staff Connect**.
+  - Proceed to **Phase 3: Module B — Property Connect** (or apply migrations & test live Supabase `fkjiafpcbgqtnkdonrtb` first).

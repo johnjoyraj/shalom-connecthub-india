@@ -1,5 +1,12 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.2.0] - 2026-11-25 (Phase 2 — Module A: Staff Connect)
+### Added
+- **Database Migration**: Added `supabase/migrations/202611250004_phase2_staff_connect.sql` with 9 RLS-enabled tables (`candidate_profiles`, `candidate_educations`, `candidate_experiences`, `candidate_documents`, `job_posts`, `job_requirements`, `job_applications`, `application_events`, `recruitment_enquiries`).
+- **Public Directories**: Implemented `/staff` (`StaffHubPage`), `/jobs` (`JobsDirectoryPage` with employment-type, qualification, skills, salary, experience, location, sorting & pagination), and `/candidates` (`CandidatesDirectoryPage` with DPDPA CV privacy).
+- **Candidate & Employer Portals**: Implemented `/dashboard/applications` (`CandidateDashboardPage` with education/experience/CV upload & status timeline) and `/employer/*` (`EmployerDashboardPage` for posting/pausing jobs, reviewing applicants, authorized CV verification, shortlisting, recruitment enquiries, and subscription quota preview).
+- **Automated Tests**: Added `src/test/staffConnect.test.ts` (17/17 total tests passing).
+
 ## [0.1.0] - 2026-11-25 (Phase 1 — Core Foundation)
 ### Added
 - **Project & Toolchain**: Initialized Vite + React 19 + TypeScript + Tailwind CSS + React Router + Vitest in `e:\MYWORKSPACE\SHALOM CONNECTHUB INDIA`.

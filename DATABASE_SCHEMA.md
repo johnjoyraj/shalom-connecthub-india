@@ -30,3 +30,19 @@
 | **Configuration** | `feature_flags` | Admin-toggled module & AI/notification gates |
 | **Telemetry & DPDPA** | `search_logs` | Search analytics |
 | **Telemetry & DPDPA** | `consent_records` | Timestamped user consent records (`TERMS`, `PRIVACY`, `COOKIES`, `WHATSAPP`, `EMAIL`, `PUSH`, `MARKETING`) |
+
+---
+
+## Phase 2 — Module A: Staff Connect Tables (`202611250004_phase2_staff_connect.sql`, 9 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `candidate_profiles` | Candidate headline, qualification, experience, skills (`GIN`), expected salary, searchability, CV visibility |
+| `candidate_educations` | Candidate degrees, boards/universities, years, grades |
+| `candidate_experiences` | Work history records (`FULL_TIME`, `PART_TIME`, `TEMPORARY`, `CONTRACT`) |
+| `candidate_documents` | Private CV & certificate metadata (strict owner + applied-employer + admin RLS) |
+| `job_posts` | Job vacancies linked 1:1 to `listings` (`OPEN`, `PAUSED`, `CLOSED`, salary, work mode, experience) |
+| `job_requirements` | Structured skills/qualification/language requirements |
+| `job_applications` | Candidate job applications with unique `(job_post_id, applicant_user_id)` constraint |
+| `application_events` | Status change audit timeline (`APPLIED` → `SHORTLISTED` → `HIRED` / `WITHDRAWN`) |
+| `recruitment_enquiries` | Direct candidate-employer recruitment enquiries and replies |

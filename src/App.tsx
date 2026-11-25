@@ -22,6 +22,11 @@ import {
   PrivacyPage,
   TermsPage,
 } from './pages/public/StaticCompliancePages';
+import { CandidateDashboardPage } from './pages/staff/CandidateDashboardPage';
+import { CandidatesDirectoryPage } from './pages/staff/CandidatesDirectoryPage';
+import { EmployerDashboardPage } from './pages/staff/EmployerDashboardPage';
+import { JobsDirectoryPage } from './pages/staff/JobsDirectoryPage';
+import { StaffHubPage } from './pages/staff/StaffHubPage';
 
 export function AppRoutes() {
   return (
@@ -29,39 +34,9 @@ export function AppRoutes() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
-        <Route
-          path="/staff"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Staff Connect — Employment & Talent Across India"
-              phaseNumber={2}
-              summary="Connect employers with verified candidates across full-time, part-time, temporary, and contract vacancies."
-              highlights={['Employer & candidate profiles', 'CV uploads with strict private RLS', 'Qualification & salary filters', 'Application tracking & shortlisting']}
-            />
-          }
-        />
-        <Route
-          path="/jobs"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Job Vacancies"
-              phaseNumber={2}
-              summary="Browse full-time, part-time, temporary, and contract jobs across all Indian states and PIN codes."
-              highlights={['All-India job search', 'Experience & salary filters', 'Direct application tracking', 'Employer verification badges']}
-            />
-          }
-        />
-        <Route
-          path="/candidates"
-          element={
-            <ModulePreviewPage
-              moduleTitle="Candidate Profiles"
-              phaseNumber={2}
-              summary="Search candidate qualifications, work experience, and verified skills."
-              highlights={['Education & experience records', 'Skill-based matching', 'Privacy-controlled CV sharing', 'Shortlist management']}
-            />
-          }
-        />
+        <Route path="/staff" element={<StaffHubPage />} />
+        <Route path="/jobs" element={<JobsDirectoryPage />} />
+        <Route path="/candidates" element={<CandidatesDirectoryPage />} />
         <Route
           path="/properties"
           element={
@@ -174,12 +149,19 @@ export function AppRoutes() {
         <Route path="/dashboard/enquiries" element={<ProtectedRoute><UserDashboardPage section="enquiries" /></ProtectedRoute>} />
         <Route path="/dashboard/messages" element={<ProtectedRoute><UserDashboardPage section="messages" /></ProtectedRoute>} />
         <Route path="/dashboard/saved" element={<ProtectedRoute><UserDashboardPage section="saved" /></ProtectedRoute>} />
-        <Route path="/dashboard/applications" element={<ProtectedRoute><UserDashboardPage section="applications" /></ProtectedRoute>} />
+        <Route path="/dashboard/applications" element={<ProtectedRoute><CandidateDashboardPage /></ProtectedRoute>} />
         <Route path="/dashboard/payments" element={<ProtectedRoute><UserDashboardPage section="payments" /></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboardPage section="settings" /></ProtectedRoute>} />
 
-        {/* Role Portal Shells (Phases 2-4) */}
-        <Route path="/employer/*" element={<ProtectedRoute requiredRoles={['employer']}><UserDashboardPage section="employer-portal" /></ProtectedRoute>} />
+        {/* Employer Routes (Phase 2) */}
+        <Route path="/employer" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="overview" /></ProtectedRoute>} />
+        <Route path="/employer/jobs" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="jobs" /></ProtectedRoute>} />
+        <Route path="/employer/candidates" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="candidates" /></ProtectedRoute>} />
+        <Route path="/employer/applications" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="applications" /></ProtectedRoute>} />
+        <Route path="/employer/shortlist" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="shortlist" /></ProtectedRoute>} />
+        <Route path="/employer/subscription" element={<ProtectedRoute requiredRoles={['employer', 'school_admin']}><EmployerDashboardPage tab="subscription" /></ProtectedRoute>} />
+
+        {/* Role Portal Shells (Phases 3-4) */}
         <Route path="/owner/*" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><UserDashboardPage section="property-owner-portal" /></ProtectedRoute>} />
         <Route path="/school-dashboard/*" element={<ProtectedRoute requiredRoles={['school_admin']}><UserDashboardPage section="school-portal" /></ProtectedRoute>} />
 

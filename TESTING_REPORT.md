@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 1 — Core Architecture, Auth, Locations, RLS Migrations & Admin Control Centre
+**Phase Tested**: Phase 2 — Module A: Staff Connect (plus Phase 1 Core Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 7.82s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (13/13)** | 4 test files passed in 10.22s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.86s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (17/17)** | 5 test files passed in 8.95s |
 
 ---
 
-## 2. Test File Breakdown (13 Tests Passed)
+## 2. Test File Breakdown (17 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -33,6 +33,11 @@
 4. `src/test/appUi.test.tsx` **(2/2 passed)**:
    - `HomePage` renders All-India search form and approved listings.
    - `PricingPage` renders configurable tiers (`₹199`, `₹499`, `₹1,999`).
+5. `src/test/staffConnect.test.ts` **(4/4 passed)**:
+   - Job search filters by employment type, qualification, skills, salary, and India location.
+   - Employer role guard blocks unauthorized job posting; candidate CV upload + application + duplicate-application blocking work end-to-end.
+   - Private CV isolation prevents unrelated employers from accessing candidate CV documents while authorizing the hiring employer.
+   - Recruitment enquiries & employer replies work end-to-end, and all 9 Phase 2 tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 
