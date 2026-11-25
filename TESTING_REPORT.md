@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 3 — Module B: Property Connect (plus Phase 1 & 2 Regression)
+**Phase Tested**: Phase 4 — Module C: School Connect (plus Phases 1–3 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 7.84s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (22/22)** | 6 test files passed in 10.88s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.30s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (26/26)** | 7 test files passed in 11.46s |
 
 ---
 
-## 2. Test File Breakdown (22 Tests Passed)
+## 2. Test File Breakdown (26 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -43,6 +43,11 @@
    - Address privacy masks full street addresses for public viewers while revealing them to authorised owners/agents.
    - Owner & assigned authorised-agent isolation blocks unassigned agents from viewing documents or altering properties, and enforces the non-legal-title disclaimer.
    - Visit requests, owner confirmation replies, and moderation reporting work end-to-end, and all 7 Phase 3 tables enforce `ENABLE ROW LEVEL SECURITY`.
+7. `src/test/schoolConnect.test.ts` **(4/4 passed)**:
+   - Searches schools, preschools, and coaching institutes by institution type, board, classes, facilities, and Indian location.
+   - Enforces strict cross-school isolation: School Admin 1 is blocked from accessing or modifying School 2's admission enquiries or facilities.
+   - Supports admission enquiry workflow, teaching/non-teaching vacancies, and profile loading.
+   - Verifies all 6 Phase 4 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 

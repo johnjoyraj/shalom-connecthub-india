@@ -1,5 +1,11 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.4.0] - 2026-11-25 (Phase 4 — Module C: School Connect)
+### Added
+- **Database Migration**: Added `supabase/migrations/202611250006_phase4_school_connect.sql` with 6 RLS-enabled tables (`schools`, `school_classes`, `school_facilities`, `admission_enquiries`, `school_staff_vacancies`, `school_gallery`) enforcing cross-school isolation.
+- **Public & School Admin Portals**: Implemented `/schools` (`SchoolsDirectoryPage`), `/schools/:slug` (`SchoolProfilePage` with classes, facilities, gallery, staff vacancies, and admission enquiry submission), and `/school-dashboard/*` (`SchoolDashboardPage` for profile, classes/facilities, admission tracking, teaching/non-teaching vacancies, and plans).
+- **Automated Tests**: Added `src/test/schoolConnect.test.ts` (26/26 total tests passing).
+
 ## [0.3.0] - 2026-11-25 (Phase 3 — Module B: Property Connect)
 ### Added
 - **Database Migration**: Added `supabase/migrations/202611250005_phase3_property_connect.sql` with 7 RLS-enabled tables (`properties`, `property_details`, `property_pricing`, `property_locations`, `property_features`, `property_documents`, `property_enquiries`) enforcing owner/assigned-agent isolation and non-legal-title document disclaimers.

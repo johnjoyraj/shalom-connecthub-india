@@ -20,11 +20,13 @@ import {
   ContactPage,
   HelpPage,
   InfoCompliancePage,
-  ListingDetailShellPage,
   ModulePreviewPage,
   PrivacyPage,
   TermsPage,
 } from './pages/public/StaticCompliancePages';
+import { SchoolDashboardPage } from './pages/school/SchoolDashboardPage';
+import { SchoolProfilePage } from './pages/school/SchoolProfilePage';
+import { SchoolsDirectoryPage } from './pages/school/SchoolsDirectoryPage';
 import { CandidateDashboardPage } from './pages/staff/CandidateDashboardPage';
 import { CandidatesDirectoryPage } from './pages/staff/CandidatesDirectoryPage';
 import { EmployerDashboardPage } from './pages/staff/EmployerDashboardPage';
@@ -44,18 +46,8 @@ export function AppRoutes() {
         <Route path="/rentals" element={<PropertiesDirectoryPage preset="RENTALS" />} />
         <Route path="/property-sales" element={<PropertiesDirectoryPage preset="SALES" />} />
         <Route path="/land-plots" element={<PropertiesDirectoryPage preset="LAND" />} />
-        <Route
-          path="/schools"
-          element={
-            <ModulePreviewPage
-              moduleTitle="School Connect — Institutions & Admissions"
-              phaseNumber={4}
-              summary="Discover schools, colleges, preschools, tuition centres, and coaching institutions across India."
-              highlights={['Board & affiliation filters', 'Classes & campus facilities', 'Admission enquiry tracking', 'Teaching & non-teaching vacancies']}
-            />
-          }
-        />
-        <Route path="/schools/:slug" element={<ListingDetailShellPage />} />
+        <Route path="/schools" element={<SchoolsDirectoryPage />} />
+        <Route path="/schools/:slug" element={<SchoolProfilePage />} />
         <Route path="/listing/:slug" element={<PropertyDetailPage />} />
         <Route
           path="/providers"
@@ -130,7 +122,12 @@ export function AppRoutes() {
         <Route path="/owner/enquiries" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="enquiries" /></ProtectedRoute>} />
         <Route path="/owner/documents" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="documents" /></ProtectedRoute>} />
         <Route path="/owner/subscription" element={<ProtectedRoute requiredRoles={['property_owner', 'property_agent']}><OwnerDashboardPage tab="subscription" /></ProtectedRoute>} />
-        <Route path="/school-dashboard/*" element={<ProtectedRoute requiredRoles={['school_admin']}><UserDashboardPage section="school-portal" /></ProtectedRoute>} />
+        {/* School Routes (Phase 4) */}
+        <Route path="/school-dashboard" element={<ProtectedRoute requiredRoles={['school_admin']}><SchoolDashboardPage tab="overview" /></ProtectedRoute>} />
+        <Route path="/school-dashboard/profile" element={<ProtectedRoute requiredRoles={['school_admin']}><SchoolDashboardPage tab="profile" /></ProtectedRoute>} />
+        <Route path="/school-dashboard/admissions" element={<ProtectedRoute requiredRoles={['school_admin']}><SchoolDashboardPage tab="admissions" /></ProtectedRoute>} />
+        <Route path="/school-dashboard/vacancies" element={<ProtectedRoute requiredRoles={['school_admin']}><SchoolDashboardPage tab="vacancies" /></ProtectedRoute>} />
+        <Route path="/school-dashboard/enquiries" element={<ProtectedRoute requiredRoles={['school_admin']}><SchoolDashboardPage tab="enquiries" /></ProtectedRoute>} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute adminScope="overview"><AdminControlCentrePage tab="overview" /></ProtectedRoute>} />

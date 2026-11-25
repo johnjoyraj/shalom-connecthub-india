@@ -60,3 +60,16 @@
 | `property_features` | Property amenities |
 | `property_documents` | Private supporting documents with mandatory non-legal-title verification disclaimer (owner + assigned agent + admin only) |
 | `property_enquiries` | Buyer, tenant, and visit requests (`NEW` → `VISIT_CONFIRMED` → `COMPLETED` / `CLOSED`) |
+
+---
+
+## Phase 4 — Module C: School Connect Tables (`202611250006_phase4_school_connect.sql`, 6 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `schools` | Schools, colleges, preschools, tuition centres & coaching institutes; board/affiliation, admissions status, plan code |
+| `school_classes` | Classes/programs offered, stream/level, age/eligibility, annual fee estimate, seat capacity |
+| `school_facilities` | Campus facilities (labs, transport, library, safety, etc.) |
+| `admission_enquiries` | Parent/student admission enquiries with strict cross-school RLS isolation |
+| `school_staff_vacancies` | Teaching & non-teaching staff recruitment openings |
+| `school_gallery` | Campus photos and captions |
