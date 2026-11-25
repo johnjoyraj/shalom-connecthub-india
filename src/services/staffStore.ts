@@ -18,6 +18,25 @@ import type {
   WorkMode,
 } from '../types/staff';
 import { getDescendantLocationIds } from './locationSearch';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveDbLocationId(
+  supabase: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  locationId: string | null | undefined
+): Promise<string | null> {
+  if (!locationId) return null;
+  if (UUID_RE.test(locationId)) return locationId;
+  const seedNode = INDIA_LOCATIONS_SEED.find((l) => l.id === locationId);
+  if (!seedNode) return null;
+  const { data } = await supabase
+    .from('locations')
+    .select('id')
+    .eq('name', seedNode.name)
+    .eq('level', seedNode.level)
+    .maybeSingle();
+  return data?.id ? String(data.id) : null;
+}
 import { hasAnyAdminRole } from './permissions';
 
 const STAFF_SANDBOX_KEY = 'shalom_connecthub_staff_v1';
@@ -570,6 +589,10 @@ export const staffStore = {
     const current = await this.getOrCreateMyCandidateProfile(user);
     const supabase = getSupabaseClient();
     if (supabase) {
+      const dbLocId = await resolveDbLocationId(
+        supabase,
+        updates.current_location_id ?? current.profile.current_location_id
+      );
       const { data, error } = await supabase
         .from('candidate_profiles')
         .update({
@@ -581,7 +604,7 @@ export const staffStore = {
           preferred_employment_types: updates.preferred_employment_types ?? current.profile.preferred_employment_types,
           expected_salary_min: updates.expected_salary_min ?? current.profile.expected_salary_min,
           expected_salary_max: updates.expected_salary_max ?? current.profile.expected_salary_max,
-          current_location_id: updates.current_location_id ?? current.profile.current_location_id,
+          current_location_id: dbLocId,
           willing_to_relocate: updates.willing_to_relocate ?? current.profile.willing_to_relocate,
           is_public_searchable: updates.is_public_searchable ?? current.profile.is_public_searchable,
           cv_visibility: updates.cv_visibility ?? current.profile.cv_visibility,
@@ -923,13 +946,14 @@ export const staffStore = {
     const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).slice(2, 6)}`;
     const supabase = getSupabaseClient();
     if (supabase) {
+      const dbLocId = await resolveDbLocationId(supabase, payload.location_id);
       const { data: listing, error: lErr } = await supabase
         .from('listings')
         .insert({
           owner_id: user.profile.id,
           organisation_id: payload.organisation_id ?? null,
           module_key: 'staff',
-          location_id: payload.location_id,
+          location_id: dbLocId,
           title,
           slug,
           summary: payload.summary.trim(),

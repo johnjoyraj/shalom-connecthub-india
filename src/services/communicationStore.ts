@@ -303,13 +303,13 @@ export const communicationStore = {
     if (supabase) {
       const { data } = await supabase
         .from('consent_records')
-        .select('consent_type, is_granted, created_at')
+        .select('consent_type, granted, created_at')
         .eq('user_id', userId)
         .in('consent_type', ['EMAIL', 'WHATSAPP', 'PUSH'])
         .order('created_at', { ascending: false });
       const latest = new Map<string, boolean>();
       for (const r of data ?? []) {
-        if (!latest.has(r.consent_type)) latest.set(r.consent_type, Boolean(r.is_granted));
+        if (!latest.has(r.consent_type)) latest.set(r.consent_type, Boolean(r.granted));
       }
       return {
         email: latest.get('EMAIL') ?? true,
