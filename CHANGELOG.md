@@ -1,5 +1,12 @@
 # CHANGELOG — SHALOM CONNECTHUB INDIA
 
+## [0.5.0] - 2026-11-25 (Phase 5 — Subscription, GST & Razorpay Engine)
+### Added
+- **Database & Edge Functions**: Added `supabase/migrations/202611250007_phase5_financial_engine.sql` (11 RLS-enabled financial tables) and 3 Razorpay Edge Functions (`razorpay-create-order`, `razorpay-verify-payment`, `razorpay-webhook`) with HMAC-SHA256 verification and idempotency.
+- **GST & Finance Services**: Implemented `gstInvoice.ts` (Intra-state CGST/SGST vs Inter-state IGST + Rupees in Words) and `financeStore.ts` (configurable plans, coupons, pre-checkout consent, expiry reminder sweep, and refunds).
+- **Billing & Admin Finance UI**: Implemented `/dashboard/payments` (`PaymentsAndBillingPage`), updated `/pricing` (`PricingPage`), and implemented `/admin/plans`, `/admin/subscriptions`, `/admin/payments`, `/admin/refunds`, `/admin/commissions`, `/admin/reports` (`AdminFinancePage`).
+- **Automated Tests**: Added `src/test/financeAndPayments.test.ts` (31/31 total tests passing).
+
 ## [0.4.0] - 2026-11-25 (Phase 4 — Module C: School Connect)
 ### Added
 - **Database Migration**: Added `supabase/migrations/202611250006_phase4_school_connect.sql` with 6 RLS-enabled tables (`schools`, `school_classes`, `school_facilities`, `admission_enquiries`, `school_staff_vacancies`, `school_gallery`) enforcing cross-school isolation.

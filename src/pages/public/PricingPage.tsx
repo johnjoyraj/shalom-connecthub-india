@@ -1,14 +1,17 @@
 import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { platformStore } from '../../services/platformStore';
-import type { PricingTier } from '../../types/domain';
+import { useAuth } from '../../context/AuthContext';
+import { financeStore } from '../../services/financeStore';
+import type { SubscriptionPlan } from '../../types/finance';
 
 export function PricingPage() {
-  const [tiers, setTiers] = useState<PricingTier[]>([]);
+  const { user } = useAuth();
+  const [tiers, setTiers] = useState<SubscriptionPlan[]>([]);
+  const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
-    void platformStore.getPricingTiers().then(setTiers);
+    void financeStore.getPlans().then(setTiers);
   }, []);
 
   return (
@@ -21,63 +24,84 @@ export function PricingPage() {
           Simple, Transparent Plans Across India
         </h1>
         <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600">
-          Start free with 1 eligible listing, or upgrade as your hiring, property portfolio, or school admissions grow.
-          Online payments and GST invoices via Razorpay activate in Phase 5.
+          Start free with 1 eligible listing, or upgrade via Razorpay with transparent GST invoicing.
         </p>
+
+        <div className="mt-5 inline-flex rounded-xl border border-slate-200 bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setAnnual(false)}
+            className={`rounded-lg px-4 py-1.5 text-xs font-semibold ${!annual ? 'bg-brand-700 text-white' : 'text-slate-600'}`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setAnnual(true)}
+            className={`rounded-lg px-4 py-1.5 text-xs font-semibold ${annual ? 'bg-brand-700 text-white' : 'text-slate-600'}`}
+          >
+            Annual (2 Months Free)
+          </button>
+        </div>
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-5">
-        {tiers.map((tier) => (
-          <div
-            key={tier.code}
-            className={`flex flex-col justify-between rounded-2xl border p-6 shadow-sm ${
-              tier.highlight
-                ? 'border-brand-600 bg-brand-950 text-white ring-2 ring-brand-600'
-                : 'border-slate-200 bg-white text-slate-900'
-            }`}
-          >
-            <div>
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold">{tier.name}</h2>
-                {tier.highlight ? (
-                  <span className="rounded-full bg-saffron-500 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-950">
-                    Popular
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-3xl font-extrabold">₹{tier.monthly_inr.toLocaleString('en-IN')}</span>
-                <span className={`text-xs ${tier.highlight ? 'text-brand-200' : 'text-slate-500'}`}>/ month</span>
-              </div>
-              <p className={`mt-1 text-xs font-medium ${tier.highlight ? 'text-brand-200' : 'text-slate-600'}`}>
-                Up to {tier.active_listings_limit} active listing{tier.active_listings_limit > 1 ? 's' : ''}
-              </p>
-              <ul className="mt-5 space-y-2.5 text-xs">
-                {tier.features.map((feat) => (
-                  <li key={feat} className="flex items-start gap-2">
-                    <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tier.highlight ? 'text-saffron-500' : 'text-emerald-600'}`} />
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Link
-              to="/register"
-              className={`mt-6 block rounded-lg px-4 py-2 text-center text-sm font-semibold transition ${
-                tier.highlight
-                  ? 'bg-white text-brand-900 hover:bg-brand-50'
-                  : 'bg-brand-700 text-white hover:bg-brand-800'
+        {tiers.map((tier) => {
+          const price = annual ? tier.annual_price_inr : tier.monthly_price_inr;
+          return (
+            <div
+              key={tier.id}
+              className={`flex flex-col justify-between rounded-2xl border p-6 shadow-sm ${
+                tier.is_highlight
+                  ? 'border-brand-600 bg-brand-950 text-white ring-2 ring-brand-600'
+                  : 'border-slate-200 bg-white text-slate-900'
               }`}
             >
-              {tier.monthly_inr === 0 ? 'Start Free' : 'Choose Plan'}
-            </Link>
-          </div>
-        ))}
+              <div>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold">{tier.name}</h2>
+                  {tier.is_highlight ? (
+                    <span className="rounded-full bg-saffron-500 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-950">
+                      Popular
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold">₹{price.toLocaleString('en-IN')}</span>
+                  <span className={`text-xs ${tier.is_highlight ? 'text-brand-200' : 'text-slate-500'}`}>
+                    / {annual ? 'year' : 'month'}
+                  </span>
+                </div>
+                <p className={`mt-1 text-xs font-medium ${tier.is_highlight ? 'text-brand-200' : 'text-slate-600'}`}>
+                  Up to {tier.listing_limit} active listing{tier.listing_limit > 1 ? 's' : ''}
+                </p>
+                <ul className="mt-5 space-y-2.5 text-xs">
+                  {tier.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2">
+                      <Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${tier.is_highlight ? 'text-saffron-500' : 'text-emerald-600'}`} />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <Link
+                to={user ? '/dashboard/payments' : '/register'}
+                className={`mt-6 block rounded-lg px-4 py-2 text-center text-sm font-semibold transition ${
+                  tier.is_highlight
+                    ? 'bg-white text-brand-900 hover:bg-brand-50'
+                    : 'bg-brand-700 text-white hover:bg-brand-800'
+                }`}
+              >
+                {price === 0 ? 'Start Free' : 'Choose Plan'}
+              </Link>
+            </div>
+          );
+        })}
       </div>
 
       <div className="mt-10 rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-600">
-        <strong>Pricing &amp; Consent Policy:</strong> Applicable GST, service charges, or facilitation fees are always shown clearly before payment.
+        <strong>Pricing &amp; Consent Policy:</strong> Applicable GST (18%), service charges, or facilitation fees are always shown clearly before payment.
         No automatic recurring debits occur without explicit customer authorisation.
       </div>
     </div>

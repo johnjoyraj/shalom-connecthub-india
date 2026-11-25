@@ -11,6 +11,8 @@ import {
   VerifyOtpPage,
 } from './pages/auth/AuthPages';
 import { UserDashboardPage } from './pages/dashboard/UserDashboardPage';
+import { AdminFinancePage } from './pages/finance/AdminFinancePage';
+import { PaymentsAndBillingPage } from './pages/finance/PaymentsAndBillingPage';
 import { OwnerDashboardPage } from './pages/property/OwnerDashboardPage';
 import { PropertiesDirectoryPage } from './pages/property/PropertiesDirectoryPage';
 import { PropertyDetailPage } from './pages/property/PropertyDetailPage';
@@ -105,7 +107,7 @@ export function AppRoutes() {
         <Route path="/dashboard/messages" element={<ProtectedRoute><UserDashboardPage section="messages" /></ProtectedRoute>} />
         <Route path="/dashboard/saved" element={<ProtectedRoute><UserDashboardPage section="saved" /></ProtectedRoute>} />
         <Route path="/dashboard/applications" element={<ProtectedRoute><CandidateDashboardPage /></ProtectedRoute>} />
-        <Route path="/dashboard/payments" element={<ProtectedRoute><UserDashboardPage section="payments" /></ProtectedRoute>} />
+        <Route path="/dashboard/payments" element={<ProtectedRoute><PaymentsAndBillingPage /></ProtectedRoute>} />
         <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboardPage section="settings" /></ProtectedRoute>} />
 
         {/* Employer Routes (Phase 2) */}
@@ -143,12 +145,12 @@ export function AppRoutes() {
         <Route path="/admin/properties" element={<ProtectedRoute adminScope="moderation"><AdminControlCentrePage tab="module-shell" shellTitle="Property Connect Administration (Phase 3)" /></ProtectedRoute>} />
         <Route path="/admin/schools" element={<ProtectedRoute adminScope="moderation"><AdminControlCentrePage tab="module-shell" shellTitle="School Connect Administration (Phase 4)" /></ProtectedRoute>} />
         <Route path="/admin/enquiries" element={<ProtectedRoute adminScope="moderation"><AdminControlCentrePage tab="module-shell" shellTitle="Enquiries Administration (Phase 6)" /></ProtectedRoute>} />
-        <Route path="/admin/subscriptions" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Subscriptions Management (Phase 5)" /></ProtectedRoute>} />
-        <Route path="/admin/plans" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Subscription Plans Configuration (Phase 5)" /></ProtectedRoute>} />
-        <Route path="/admin/payments" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Razorpay Payments Ledger (Phase 5)" /></ProtectedRoute>} />
-        <Route path="/admin/refunds" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Refunds & Disputes (Phase 5)" /></ProtectedRoute>} />
-        <Route path="/admin/commissions" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Service Charges & Commission Rules (Phase 5)" /></ProtectedRoute>} />
-        <Route path="/admin/reports" element={<ProtectedRoute adminScope="finance"><AdminControlCentrePage tab="finance-shell" shellTitle="Financial & Usage Reports (Phase 5)" /></ProtectedRoute>} />
+        <Route path="/admin/subscriptions" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="subscriptions" /></ProtectedRoute>} />
+        <Route path="/admin/plans" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="plans" /></ProtectedRoute>} />
+        <Route path="/admin/payments" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="payments" /></ProtectedRoute>} />
+        <Route path="/admin/refunds" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="refunds" /></ProtectedRoute>} />
+        <Route path="/admin/commissions" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="commissions" /></ProtectedRoute>} />
+        <Route path="/admin/reports" element={<ProtectedRoute adminScope="finance"><AdminFinancePage tab="reports" /></ProtectedRoute>} />
         <Route path="/admin/notifications" element={<ProtectedRoute adminScope="system"><AdminControlCentrePage tab="module-shell" shellTitle="Notification Templates & Delivery Logs (Phase 6)" /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

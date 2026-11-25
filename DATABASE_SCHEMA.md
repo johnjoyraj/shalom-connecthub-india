@@ -73,3 +73,21 @@
 | `admission_enquiries` | Parent/student admission enquiries with strict cross-school RLS isolation |
 | `school_staff_vacancies` | Teaching & non-teaching staff recruitment openings |
 | `school_gallery` | Campus photos and captions |
+
+---
+
+## Phase 5 — Financial, Subscriptions & Razorpay Tables (`202611250007_phase5_financial_engine.sql`, 11 RLS-Enabled Tables)
+
+| Table | Purpose |
+| :--- | :--- |
+| `plans` | Admin-configurable plans (`FREE`, `STARTER`, `PROFESSIONAL`, `BUSINESS`, `PREMIUM`) with monthly/annual INR prices & limits |
+| `plan_features` | Included feature items per plan |
+| `subscriptions` | User/org subscriptions (`PENDING_PAYMENT`, `ACTIVE`, `EXPIRED`, `CANCELLED`) & reminder stages (`7D`, `3D`, `1D`, `0D`) |
+| `subscription_events` | Audit trail of activations, renewals, reminders, and expirations |
+| `promotional_coupons` | Configurable percentage/fixed discount coupons |
+| `payments` | Razorpay order/payment IDs, signature verification flag, idempotency keys, amounts (no card data stored) |
+| `invoices` | Sequential Indian GST tax invoices (`INTRA_STATE` CGST+SGST vs `INTER_STATE` IGST + Rupees in Words) |
+| `refunds` | User refund requests & Finance Admin processing ledger |
+| `service_charges` | Configurable per-listing/per-lead/fixed service charges |
+| `commission_rules` | Consent- and contract-gated placement/facilitation commission rules |
+| `commission_records` | Recorded facilitation/placement commissions with explicit `contract_accepted` gate |

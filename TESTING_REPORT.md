@@ -1,7 +1,7 @@
 # TESTING REPORT — SHALOM CONNECTHUB INDIA
 
 **Report Date**: 2026-11-25  
-**Phase Tested**: Phase 4 — Module C: School Connect (plus Phases 1–3 Regression)
+**Phase Tested**: Phase 5 — Subscription, GST Invoice & Razorpay Engine (plus Phases 1–4 Regression)
 
 ---
 
@@ -10,12 +10,12 @@
 | Check / Suite | Command | Result | Scope & Observations |
 | :--- | :--- | :---: | :--- |
 | TypeScript Check | `npm.cmd run typecheck` | **PASS** | Zero TypeScript errors across `src/` |
-| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.30s (`dist/` generated) |
-| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (26/26)** | 7 test files passed in 11.46s |
+| Production Build | `npm.cmd run build` | **PASS** | `tsc -b && vite build` succeeded in 8.81s (`dist/` generated) |
+| Unit & Integration Tests | `npm.cmd test` (`vitest run`) | **PASS (31/31)** | 8 test files passed in 12.40s |
 
 ---
 
-## 2. Test File Breakdown (26 Tests Passed)
+## 2. Test File Breakdown (31 Tests Passed)
 1. `src/test/permissions.test.ts` **(3/3 passed)**:
    - Separation of self-assignable roles vs admin roles.
    - Scoped admin permission isolation (`admin_moderation`, `admin_finance`, `admin_system`, `super_admin`).
@@ -48,6 +48,12 @@
    - Enforces strict cross-school isolation: School Admin 1 is blocked from accessing or modifying School 2's admission enquiries or facilities.
    - Supports admission enquiry workflow, teaching/non-teaching vacancies, and profile loading.
    - Verifies all 6 Phase 4 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
+8. `src/test/financeAndPayments.test.ts` **(5/5 passed)**:
+   - Computes Indian Intra-State CGST/SGST vs Inter-State IGST and Rupees in Words.
+   - Enforces pre-checkout consent, rejects invalid Razorpay HMAC-SHA256 signatures, activates subscriptions and issues GST invoices on valid signatures.
+   - Handles failed payments and deduplicates duplicate Razorpay webhooks safely without creating duplicate subscriptions or invoices.
+   - Runs expiry reminders (`7D`..`0D`), reverts expired entitlements back to Free (`1` listing), and processes refunds via Finance Admin authorization.
+   - Verifies all 11 Phase 5 SQL tables enforce `ENABLE ROW LEVEL SECURITY`.
 
 ---
 
